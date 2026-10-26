@@ -126,7 +126,11 @@ function updateCompleteness(data) {
 
 function saveDraft() {
   try {
-    localStorage.setItem("forma-resume-draft", JSON.stringify({ data: readForm(), entries }));
+    localStorage.setItem("forma-resume-draft", JSON.stringify({
+      data: readForm(),
+      entries,
+      jobDescription: document.querySelector("#job-description").value
+    }));
     status.textContent = "All changes saved";
   } catch (error) {
     status.textContent = "Could not save draft";
@@ -156,6 +160,9 @@ function loadDraft() {
           Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, String(value ?? "")])));
       }
     }
+    if (typeof draft.jobDescription === "string") {
+      document.querySelector("#job-description").value = draft.jobDescription;
+    }
   } catch (error) {
     status.textContent = "Could not load saved draft";
     console.error("Unable to load resume draft from this browser.", error);
@@ -179,12 +186,16 @@ form.addEventListener("input", () => {
   scheduleSave();
 });
 document.querySelector("#download-button").addEventListener("click", () => window.print());
+document.querySelector("#job-description").addEventListener("input", scheduleSave);
+document.querySelector("#analyze-button").addEventListener("click", analyzeResume);
 document.querySelector("#reset-button").addEventListener("click", () => {
   if (!window.confirm("Start over and clear your saved resume draft?")) return;
   form.reset();
   for (const [name, value] of Object.entries(defaults)) form.elements.namedItem(name).value = value;
   entries = structuredClone(defaultEntries);
+  document.querySelector("#job-description").value = "";
   localStorage.removeItem("forma-resume-draft");
+  document.querySelector("#analysis-results").hidden = true;
   renderEntries("experience");
   renderEntries("education");
   renderPreview();
@@ -197,6 +208,101 @@ function changeZoom(amount) {
   zoom = Math.max(70, Math.min(120, zoom + amount));
   document.querySelector("#zoom-label").textContent = `${zoom}%`;
   document.querySelector("#resume-preview").style.zoom = `${zoom}%`;
+}
+
+function getResumeText(data) {
+  return [
+    ...Object.values(data),
+    ...entries.experience.flatMap((entry) => Object.values(entry)),
+    ...entries.education.flatMap((entry) => Object.values(entry))
+  ].join(" ").toLowerCase();
+}
+
+function extractJobKeywords(jobDescription) {
+  const ignored = new Set([
+    "about", "above", "after", "again", "against", "also", "among", "an", "and", "any", "are", "as",
+    "at", "be", "because", "by",
+    "been", "being", "below", "both", "but", "can", "could", "demonstrated", "does", "doing", "down",
+    "during", "each", "excellent", "for", "from", "further", "have", "having", "here", "into", "its",
+    "in", "is", "more", "most", "must", "not", "of", "on", "only", "or", "other", "our", "out", "over", "per",
+    "same", "should",
+    "some", "such", "than", "that", "the", "their", "them", "then", "there", "these", "they", "this",
+    "those", "through", "to", "under", "using", "very", "was", "want", "were", "what", "when", "where",
+    "which", "while", "will", "with", "work", "working", "you", "your", "years", "experience", "skills",
+    "ability", "strong", "including", "required", "preferred", "responsibilities", "responsible",
+    "candidate", "candidates", "team", "teams", "job", "description", "opportunity", "looking"
+  ]);
+  const frequencies = new Map();
+  const matches = [...jobDescription.toLowerCase().matchAll(/[a-z][a-z0-9+#.-]{1,}/g)];
+  const words = matches.map((match) => match[0].replace(/^[.-]+|[.-]+$/g, ""));
+  const addCandidate = (keyword) => {
+    frequencies.set(keyword, (frequencies.get(keyword) || 0) + 1);
+  };
+  words.forEach((word, index) => {
+    if (word.length >= 2 && !ignored.has(word) && !/^\d+$/.test(word)) addCandidate(word);
+    const nextWord = words[index + 1];
+    const gap = index < matches.length - 1
+      ? jobDescription.slice(matches[index].index + matches[index][0].length, matches[index + 1].index)
+      : "";
+    if (nextWord && /^\s+$/.test(gap) && !ignored.has(word) && !ignored.has(nextWord)) {
+      addCandidate(`${word} ${nextWord}`);
+    }
+  });
+  const rankedKeywords = [...frequencies.entries()]
+    .sort((left, right) => right[1] - left[1] || right[0].length - left[0].length || left[0].localeCompare(right[0]))
+    .slice(0, 15)
+    .map(([keyword]) => keyword);
+  const phrases = rankedKeywords.filter((keyword) => keyword.includes(" "));
+  return rankedKeywords.filter((keyword) =>
+    keyword.includes(" ") || !phrases.some((phrase) => phrase.split(" ").includes(keyword))
+  );
+}
+
+function analyzeResume() {
+  const data = readForm();
+  const checks = [
+    { label: "Contact details include an email address", passed: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()), weight: 15 },
+    { label: "Professional title is included", passed: Boolean(data.title.trim()), weight: 10 },
+    { label: "Professional summary is included", passed: data.summary.trim().length >= 40, weight: 15 },
+    { label: "At least one role includes a title and employer", passed: entries.experience.some((item) => item.role.trim() && item.company.trim()), weight: 20 },
+    { label: "At least one education entry is complete", passed: entries.education.some((item) => item.degree.trim() && item.school.trim()), weight: 10 },
+    { label: "Skills are listed", passed: data.skills.split(",").some((skill) => skill.trim()), weight: 15 },
+    {
+      label: "Experience describes outcomes or measurable results",
+      passed: entries.experience.some((item) => /\d|%|\b(increased|improved|reduced|delivered|launched|led|built|created|achieved|saved|grew)\b/i.test(item.description)),
+      weight: 15
+    }
+  ];
+  const score = checks.reduce((total, check) => total + (check.passed ? check.weight : 0), 0);
+  const jobDescription = document.querySelector("#job-description").value.trim();
+  const resumeText = getResumeText(data);
+  const keywords = jobDescription ? extractJobKeywords(jobDescription) : [];
+  const matchedKeywords = keywords.filter((keyword) => new RegExp(`(^|[^a-z0-9+#])${escapeRegExp(keyword)}([^a-z0-9+#]|$)`, "i").test(resumeText));
+  const missingKeywords = keywords.filter((keyword) => !matchedKeywords.includes(keyword));
+  const results = document.querySelector("#analysis-results");
+  const scoreLabel = score >= 80 ? "Strong foundation" : score >= 55 ? "Room to improve" : "Needs attention";
+  const checklist = checks.map((check) =>
+    `<li class="${check.passed ? "check-passed" : "check-missed"}"><span aria-hidden="true">${check.passed ? "✓" : "!"}</span>${escapeHtml(check.label)}</li>`
+  ).join("");
+  const jobResult = jobDescription
+    ? `<section class="match-results"><h3>Job description match</h3>
+        ${keywords.length
+          ? `<p><strong>${matchedKeywords.length} of ${keywords.length}</strong> highlighted job-description terms found in your resume content.</p>`
+          : "<p>There were not enough specific terms to compare. Try pasting more of the job description.</p>"}
+        ${matchedKeywords.length ? `<div class="keyword-group"><strong>Found</strong><p>${matchedKeywords.map(escapeHtml).join(", ")}</p></div>` : ""}
+        ${missingKeywords.length ? `<div class="keyword-group keyword-gap"><strong>Not found — review these</strong><p>${missingKeywords.map(escapeHtml).join(", ")}</p><small>Only add a term if it accurately reflects your skills or experience. Consider describing relevant work using the employer’s wording.</small></div>` : ""}
+        <small>Keyword comparison is a simple local text match, not an employer ATS simulation.</small>
+      </section>`
+    : `<p class="analysis-prompt">Paste a job description above to compare its terms with your resume.</p>`;
+
+  results.innerHTML = `<div class="score-summary"><div><span class="eyebrow">RESUME READINESS CHECKLIST</span><strong class="score-value">${score}<span>/100</span></strong></div><span class="score-label">${scoreLabel}</span></div>
+    <p class="score-disclaimer">A transparent checklist of common resume basics, not a prediction of how any employer’s ATS will rank your application.</p>
+    <ul class="checklist-results">${checklist}</ul>${jobResult}`;
+  results.hidden = false;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 loadDraft();

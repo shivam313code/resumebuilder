@@ -67,6 +67,20 @@
           <label class="field"><span class="sr-only">Skills</span><textarea name="skills" rows="3" placeholder="e.g. Figma, User research, Prototyping">Product design, User research, Prototyping, Figma, Design systems, Workshop facilitation</textarea></label>
         </section>
       </form>
+
+      <section class="analysis-card" aria-labelledby="analysis-heading">
+        <div class="section-title">
+          <span class="section-icon icon-blue">✓</span>
+          <div><h2 id="analysis-heading">ATS check & job match</h2><p>Review your resume structure and compare it with a job description.</p></div>
+        </div>
+        <label class="field analysis-field" for="job-description">Job description <span class="optional-label">OPTIONAL</span>
+          <textarea id="job-description" rows="6" maxlength="12000" placeholder="Paste a job description to see relevant keywords and gaps. Your text stays in this browser."></textarea>
+        </label>
+        <button class="button button-primary analysis-button" id="analyze-button" type="button">Analyze resume</button>
+        <div class="analysis-privacy">Analysis runs in your browser. Suggestions are prompts to review, not claims to add automatically.</div>
+        <div id="analysis-results" class="analysis-results" aria-live="polite" hidden></div>
+      </section>
+
       <div class="editor-footer"><span class="footer-lock">♧</span> Your resume is saved privately in this browser.</div>
     </section>
 
