@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7fb">
+  <title>Build Anything — Resume builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Build Anything home"><span class="brand-mark">B</span><span>Build Anything</span></a>
+    <div class="topbar-center"><span class="status-dot"></span><span id="save-status">All changes saved</span></div>
+    <button class="button button-primary top-download" id="download-button" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+      <span>Download PDF</span>
+    </button>
+  </header>
+
+  <main class="workspace">
+    <section class="editor-panel" aria-label="Resume editor">
+      <div class="editor-heading">
+        <div>
+          <div class="eyebrow">YOUR DOCUMENT</div>
+          <h1>Build your resume</h1>
+          <p>Make it yours. Your changes show up instantly.</p>
+        </div>
+        <button class="text-button" id="reset-button" type="button">Start over</button>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-copy"><span>Resume completeness</span><strong id="completion-label">72%</strong></div>
+        <div class="progress-track"><span id="completion-bar"></span></div>
+        <div class="progress-hint">A few more details can make your profile shine.</div>
+      </div>
+
+      <form id="resume-form" autocomplete="on">
+        <section class="form-section">
+          <div class="section-title"><span class="section-icon">✳</span><div><h2>Personal details</h2><p>Start with the basics</p></div></div>
+          <div class="field-grid">
+            <label class="field field-full">Full name<input name="name" value="Alex Morgan" placeholder="e.g. Alex Morgan"></label>
+            <label class="field field-full">Professional title<input name="title" value="Product Designer" placeholder="e.g. Product Designer"></label>
+            <label class="field">Email<input name="email" type="email" value="alex.morgan@email.com" placeholder="you@email.com"></label>
+            <label class="field">Phone<input name="phone" type="tel" value="+1 (555) 123-4567" placeholder="+1 555 000 0000"></label>
+            <label class="field">Location<input name="location" value="Brooklyn, NY" placeholder="City, Country"></label>
+            <label class="field">Website / LinkedIn<input name="website" value="linkedin.com/in/alexmorgan" placeholder="linkedin.com/in/you"></label>
+            <label class="field field-full">Professional summary<textarea name="summary" rows="4" placeholder="A short introduction that highlights your experience and strengths.">Thoughtful product designer with 6+ years of experience turning complex problems into simple, human-centered digital experiences. I bring teams together around clear ideas and ship work that makes a measurable difference.</textarea></label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-blue">↗</span><div><h2>Work experience</h2><p>Show the impact you’ve made</p></div></div><button class="add-button" id="add-experience" type="button">＋ Add</button></div>
+          <div id="experience-list" class="entry-list"></div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-purple">⌂</span><div><h2>Education</h2><p>Degrees, courses, and more</p></div></div><button class="add-button" id="add-education" type="button">＋ Add</button></div>
+          <div id="education-list" class="entry-list"></div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title"><span class="section-icon icon-green">✦</span><div><h2>Skills</h2><p>Separate each skill with a comma</p></div></div>
+          <label class="field"><span class="sr-only">Skills</span><textarea name="skills" rows="3" placeholder="e.g. Figma, User research, Prototyping">Product design, User research, Prototyping, Figma, Design systems, Workshop facilitation</textarea></label>
+        </section>
+      </form>
+      <div class="editor-footer"><span class="footer-lock">♧</span> Your resume is saved privately in this browser.</div>
+    </section>
+
+    <section class="preview-panel" aria-label="Resume preview">
+      <div class="preview-toolbar">
+        <div class="preview-label"><span class="preview-eye">◉</span><span>LIVE PREVIEW</span></div>
+        <div class="zoom-controls" aria-label="Preview zoom controls"><button type="button" id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-label">100%</span><button type="button" id="zoom-in" aria-label="Zoom in">＋</button></div>
+      </div>
+      <div class="paper-wrap" id="paper-wrap">
+        <article class="resume-paper" id="resume-preview">
+          <header class="resume-header">
+            <div><h2 data-preview="name">Alex Morgan</h2><p class="resume-title" data-preview="title">Product Designer</p></div>
+            <div class="resume-contact"><span data-preview="email">alex.morgan@email.com</span><span data-preview="phone">+1 (555) 123-4567</span><span data-preview="location">Brooklyn, NY</span><span data-preview="website">linkedin.com/in/alexmorgan</span></div>
+          </header>
+          <section class="resume-section"><h3>Profile</h3><p class="resume-summary" data-preview="summary"></p></section>
+          <section class="resume-section"><h3>Experience</h3><div id="preview-experience"></div></section>
+          <section class="resume-section"><h3>Education</h3><div id="preview-education"></div></section>
+          <section class="resume-section"><h3>Core skills</h3><div class="skill-list" id="preview-skills"></div></section>
+          <footer class="resume-page-footer"><span>CURRICULUM VITAE</span><span>01</span></footer>
+        </article>
+      </div>
+      <div class="preview-tip"><span class="tip-sparkle">✦</span><span><strong>Looking good!</strong> Keep your resume clear, focused, and easy to scan.</span></div>
+    </section>
+  </main>
+</body>
+</html>

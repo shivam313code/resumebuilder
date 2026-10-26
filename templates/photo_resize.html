@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo Resize — Build Anything</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="tool-page">
+  <header class="home-nav">
+    <a class="brand" href="/" aria-label="Build Anything home"><span class="brand-mark">B</span><span>Build Anything</span></a>
+    <a class="nav-link" href="/">← All tools</a>
+  </header>
+  <main class="tool-workspace">
+    <a class="back-link" href="/">← Back to all tools</a>
+    <section class="tool-intro">
+      <span class="tool-icon photo-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m5 17 4.5-4.5 3 3 2.5-2.5 4 4"/></svg></span>
+      <div><div class="eyebrow">IMAGE TOOL</div><h1>Photo Resize</h1><p>Reduce your photo dimensions by the percentage you choose.</p></div>
+    </section>
+    <form class="tool-form photo-form" action="{{ url_for('photo_resize') }}" method="post" enctype="multipart/form-data">
+      <label class="upload-zone photo-upload" for="photo-file">
+        <span class="upload-symbol">↑</span><strong>Upload a photo</strong><span class="upload-description">JPG, PNG, or WebP. Maximum file size: 20 MB.</span>
+        <span class="upload-button">Choose photo</span>
+        <span class="selected-file" id="selected-file">No photo selected</span>
+        <input id="photo-file" type="file" name="file" accept="image/jpeg,image/png,image/webp" required>
+      </label>
+      <div class="reduction-control">
+        <div class="reduction-label"><label for="reduction">Reduction in %</label><output id="reduction-value" for="reduction">50%</output></div>
+        <input id="reduction" class="range-slider" type="range" name="reduction" min="1" max="90" step="1" value="50">
+        <div class="range-ends"><span>1% smaller</span><span>90% smaller</span></div>
+        <p class="reduction-hint">For example, a 50% reduction makes the width and height half their original size.</p>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="flash-message {{ category }}" role="alert">{{ message }}</div>{% endfor %}
+      {% endwith %}
+      <button class="hero-cta form-submit" type="submit">Resize and download <span aria-hidden="true">→</span></button>
+      <p class="privacy-note">Your photo is processed for resizing and is not saved on the website.</p>
+    </form>
+  </main>
+  <script>
+    const reductionSlider = document.querySelector("#reduction");
+    const reductionValue = document.querySelector("#reduction-value");
+    const updateReduction = () => {
+      reductionValue.value = `${reductionSlider.value}%`;
+      reductionValue.textContent = `${reductionSlider.value}%`;
+      const progress = ((reductionSlider.value - reductionSlider.min) / (reductionSlider.max - reductionSlider.min)) * 100;
+      reductionSlider.style.setProperty("--range-progress", `${progress}%`);
+    };
+    reductionSlider.addEventListener("input", updateReduction);
+    updateReduction();
+    document.querySelector("#photo-file").addEventListener("change", (event) => {
+      document.querySelector("#selected-file").textContent = event.target.files[0]?.name || "No photo selected";
+    });
+  </script>
+</body>
+</html>

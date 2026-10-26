@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF to Word — Build Anything</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="tool-page">
+  <header class="home-nav">
+    <a class="brand" href="/" aria-label="Build Anything home"><span class="brand-mark">B</span><span>Build Anything</span></a>
+    <a class="nav-link" href="/">← All tools</a>
+  </header>
+  <main class="tool-workspace">
+    <a class="back-link" href="/">← Back to all tools</a>
+    <section class="tool-intro">
+      <span class="tool-icon word-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.75h7l4.25 4.5v12H7a2 2 0 0 1-2-2v-12a2.5 2.5 0 0 1 2-2.5Z"/><path d="M14 4v5h4M8.5 13h7M8.5 16h4"/></svg></span>
+      <div><div class="eyebrow">DOCUMENT TOOL</div><h1>PDF to Word</h1><p>Convert your PDF into an editable Word document.</p></div>
+    </section>
+    <form class="tool-form" action="{{ url_for('pdf_to_word') }}" method="post" enctype="multipart/form-data">
+      <label class="upload-zone" for="pdf-file">
+        <span class="upload-symbol">↑</span><strong>Choose a PDF to convert</strong><span class="upload-description">Select a file from your device. Maximum file size: 20 MB.</span>
+        <span class="upload-button">Choose PDF</span>
+        <span class="selected-file" id="selected-file">No file selected</span>
+        <input id="pdf-file" type="file" name="file" accept="application/pdf,.pdf" required>
+      </label>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="flash-message {{ category }}" role="alert">{{ message }}</div>{% endfor %}
+      {% endwith %}
+      <button class="hero-cta form-submit" type="submit">Convert to Word <span aria-hidden="true">→</span></button>
+      <p class="privacy-note">Your file is processed for conversion and is not saved on the website.</p>
+    </form>
+  </main>
+  <script>
+    document.querySelector("#pdf-file").addEventListener("change", (event) => {
+      document.querySelector("#selected-file").textContent = event.target.files[0]?.name || "No file selected";
+    });
+  </script>
+</body>
+</html>
