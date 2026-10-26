@@ -56,3 +56,22 @@ Keep `FLASK_SECRET_KEY` unchanged between restarts so Flask's signed session
 cookie remains valid. For production, use HTTPS and configure these values in
 your hosting provider's secret/environment-variable settings. Without Razorpay
 keys, all five free templates remain available and paid templates stay locked.
+
+Premium templates are sold as one-time purchases; the app does not offer
+recurring paid subscriptions.
+
+## Resume analysis MVP
+
+The resume builder includes a local ATS-readiness checklist and optional job
+description keyword comparison. The checklist uses visible criteria for
+contact details, resume sections, skills, and evidence of outcomes. The job
+comparison uses a basic keyword-frequency heuristic; it is not an ATS
+simulation or a guarantee of ranking. Users should only add suggested terms
+when they accurately describe their experience.
+
+Resume drafts and the optional job description are stored in browser local
+storage. They are not synced between devices or protected by an account. This
+MVP does not yet include account registration, a server database, or
+AI-generated resume content. Resume analysis is not connected to the paid
+template checkout. Add secure accounts and server-side storage before
+implementing cross-device resume access.
