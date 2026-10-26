@@ -27,9 +27,9 @@
         <div>
           <div class="eyebrow">YOUR DOCUMENT</div>
           <h1>Build your resume</h1>
-          <p>Make it yours. Your changes show up instantly.</p>
+          <p>Using {{ template.name }}. Your changes show up instantly.</p>
         </div>
-        <button class="text-button" id="reset-button" type="button">Start over</button>
+        <div class="editor-actions"><a class="text-button" href="{{ url_for('resume_builder') }}">Change template</a><button class="text-button" id="reset-button" type="button">Start over</button></div>
       </div>
 
       <div class="progress-card">
@@ -72,11 +72,11 @@
 
     <section class="preview-panel" aria-label="Resume preview">
       <div class="preview-toolbar">
-        <div class="preview-label"><span class="preview-eye">◉</span><span>LIVE PREVIEW</span></div>
+        <div class="preview-label"><span class="preview-eye">◉</span><span>LIVE PREVIEW · {{ template.name }}</span></div>
         <div class="zoom-controls" aria-label="Preview zoom controls"><button type="button" id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-label">100%</span><button type="button" id="zoom-in" aria-label="Zoom in">＋</button></div>
       </div>
       <div class="paper-wrap" id="paper-wrap">
-        <article class="resume-paper" id="resume-preview">
+        <article class="resume-paper template-{{ template.id }}" id="resume-preview">
           <header class="resume-header">
             <div><h2 data-preview="name">Alex Morgan</h2><p class="resume-title" data-preview="title">Product Designer</p></div>
             <div class="resume-contact"><span data-preview="email">alex.morgan@email.com</span><span data-preview="phone">+1 (555) 123-4567</span><span data-preview="location">Brooklyn, NY</span><span data-preview="website">linkedin.com/in/alexmorgan</span></div>
