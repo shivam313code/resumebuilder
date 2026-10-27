@@ -108,9 +108,28 @@ function renderPreview() {
       <p class="resume-entry-subtitle">${escapeHtml([entry.school, entry.location].filter(Boolean).join(" · "))}</p>
       ${entry.description ? `<p class="resume-entry-description">${escapeHtml(entry.description)}</p>` : ""}
     </div>`).join("");
-  document.querySelector("#preview-skills").innerHTML = data.skills.split(",").map((skill) => skill.trim()).filter(Boolean)
-    .map((skill) => `<span class="skill-chip">${escapeHtml(skill)}</span>`).join("");
+  const skills = data.skills.split(",").map((skill) => skill.trim()).filter(Boolean);
+  const skillPreview = document.querySelector("#preview-skills");
+  const usesSkillBars = ["moon", "max", "social", "shelah"].some((templateId) =>
+    document.querySelector("#resume-preview").classList.contains(`template-${templateId}`)
+  );
+  skillPreview.innerHTML = skills.map((skill, index) => usesSkillBars
+    ? `<span class="skill-bar-item">${escapeHtml(skill)}<span class="skill-bar"><i style="--skill-level:${[88, 78, 72, 84, 67, 76, 80, 70][index % 8]}%"></i></span></span>`
+    : `<span class="skill-chip">${escapeHtml(skill)}</span>`).join("");
+  renderPreviewList("#preview-languages", "#languages-section", data.languages);
+  renderPreviewList("#preview-certificates", "#certificates-section", data.certificates);
+  renderPreviewList("#preview-software", "#software-section", data.software);
+  renderPreviewList("#preview-interests", "#interests-section", data.interests);
   updateCompleteness(data);
+}
+
+function renderPreviewList(listSelector, sectionSelector, value) {
+  const values = value.split(",").map((item) => item.trim()).filter(Boolean);
+  const section = document.querySelector(sectionSelector);
+  section.hidden = values.length === 0;
+  document.querySelector(listSelector).innerHTML = values
+    .map((item) => `<span class="skill-chip">${escapeHtml(item)}</span>`)
+    .join("");
 }
 
 function updateCompleteness(data) {

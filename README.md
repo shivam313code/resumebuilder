@@ -14,7 +14,7 @@ opens the browser's print dialog, where you can save it as a PDF.
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
    python -m pip install -r requirements.txt
-   python 1.py
+   python RES_Builder.py
    ```
 
 3. Open <http://127.0.0.1:5000> in your browser.
@@ -24,7 +24,7 @@ commands using the environment's executable directly:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe 1.py
+.\.venv\Scripts\python.exe RES_Builder.py
 ```
 
 ## Configuration
@@ -72,6 +72,12 @@ reduction percentage is applied to both image dimensions.
 The homepage is in `templates/home.html`. Edit the templates in `templates/`
 and `static/style.css` to customize the site.
 
+## Resume template gallery
+
+The resume builder includes five free, editable layouts: Timeless, Plain,
+Blogger, Pacific, and General ATS. Each design has a visible gallery preview
+that grows by 25% when hovered. Choose a design to open the live resume editor.
+
 ## Resume analysis MVP
 
 The resume builder includes a local ATS-readiness checklist and optional job
@@ -83,6 +89,5 @@ when they accurately describe their experience.
 
 Resume drafts and the optional job description are stored in browser local
 storage. They are not synced between devices or protected by an account. This
-MVP does not yet include account registration, a server database, AI-generated
-resume content, or paid subscriptions. Add secure accounts and server-side
-storage before implementing billing or cross-device resume access.
+MVP does not yet include account registration, a server database, or
+AI-generated resume content.

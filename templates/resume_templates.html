@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fc">
+  <title>Resume Template Gallery — Build Anything</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="template-picker-page">
+  <header class="home-nav">
+    <a class="brand" href="/" aria-label="Build Anything home"><span class="brand-mark">B</span><span>Build Anything</span></a>
+    <a class="nav-link" href="/">← All tools</a>
+  </header>
+
+  <main class="template-picker">
+    <a class="back-link" href="/">← Back to all tools</a>
+    <section class="picker-heading">
+      <div class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</div>
+      <h1>Choose your resume style.</h1>
+      <p>Preview five resume designs. Pick one to open the live editor and add your details.</p>
+      <div class="template-count"><span>5</span> DESIGNS <i></i> ALL FREE</div>
+    </section>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}<div class="flash-message {{ category }}" role="alert">{{ message }}</div>{% endfor %}
+    {% endwith %}
+
+    <div class="template-grid">
+      {% for template in templates %}
+      <article class="template-choice">
+        <div class="template-art template-art-{{ template.id }}" aria-hidden="true">
+          <div class="mini-resume mini-template-{{ template.id }}">
+            <header class="mini-resume-head">
+              <h3>Jordan Lee</h3>
+              <p>Product Designer</p>
+              <div class="mini-contact">Brooklyn, NY <span>·</span> jordan.lee@email.com <span>·</span> linkedin.com/in/jordanlee</div>
+            </header>
+            <aside class="mini-resume-sidebar">
+              <section><h4>Skills</h4><p>Product strategy</p><p>UX research</p><p>Prototyping</p><p>Figma</p></section>
+              <section><h4>Languages</h4><p>English</p><p>Spanish</p></section>
+            </aside>
+            <div class="mini-resume-main">
+              <section><h4>Profile</h4><p>Product designer creating clear, accessible experiences. Skilled at turning user insight into thoughtful products.</p></section>
+              <section><h4>Experience</h4><h5>Senior Product Designer</h5><p class="mini-meta">Northstar Studio · 2021–Present</p><p>Led mobile onboarding improvements, increasing completion by 28%. Partnered with product and engineering from research through launch.</p><h5>Product Designer</h5><p class="mini-meta">Brightside Digital · 2018–2021</p><p>Built an accessible design system and streamlined collaboration across three product teams.</p></section>
+              <section><h4>Education</h4><h5>BFA, Communication Design</h5><p class="mini-meta">Parsons School of Design · 2018</p></section>
+            </div>
+          </div>
+          <span class="template-rank">{{ "%02d"|format(loop.index) }}</span>
+        </div>
+        <div class="template-choice-copy">
+          <div class="template-choice-meta">
+            <span class="template-tier">FREE TEMPLATE</span>
+          </div>
+          <h2>{{ template.name }}</h2>
+          <p>{{ template.description }}</p>
+          <a class="template-action free-action" href="{{ url_for('edit_resume', template_id=template.id) }}">Use this template <span aria-hidden="true">→</span></a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </main>
+</body>
+</html>
