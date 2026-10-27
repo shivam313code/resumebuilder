@@ -34,31 +34,11 @@ reduction percentage is applied to both image dimensions.
 The homepage is in `templates/home.html`. Edit the templates in `templates/`
 and `static/style.css` to customize the site.
 
-## Resume templates and premium checkout
+## Resume template gallery
 
-The resume builder offers seven layouts: five free templates and two premium
-templates (Signature and Editorial). Each premium template costs ₹35 and is
-unlocked in the current browser session after Razorpay confirms a captured
-payment.
-
-To enable checkout, create Razorpay API keys and configure them in PowerShell
-before starting the app. Use test keys while developing; never commit or share
-the secret key.
-
-```powershell
-$env:RAZORPAY_KEY_ID = "your_razorpay_key_id"
-$env:RAZORPAY_KEY_SECRET = "your_razorpay_key_secret"
-$env:FLASK_SECRET_KEY = "a-long-random-secret-for-your-app"
-.\.venv\Scripts\python.exe RES_Builder.py
-```
-
-Keep `FLASK_SECRET_KEY` unchanged between restarts so Flask's signed session
-cookie remains valid. For production, use HTTPS and configure these values in
-your hosting provider's secret/environment-variable settings. Without Razorpay
-keys, all five free templates remain available and paid templates stay locked.
-
-Premium templates are sold as one-time purchases; the app does not offer
-recurring paid subscriptions.
+The resume builder includes five free, editable layouts: Timeless, Plain,
+Blogger, Pacific, and General ATS. Each design has a visible gallery preview
+that grows by 25% when hovered. Choose a design to open the live resume editor.
 
 ## Resume analysis MVP
 
@@ -72,6 +52,4 @@ when they accurately describe their experience.
 Resume drafts and the optional job description are stored in browser local
 storage. They are not synced between devices or protected by an account. This
 MVP does not yet include account registration, a server database, or
-AI-generated resume content. Resume analysis is not connected to the paid
-template checkout. Add secure accounts and server-side storage before
-implementing cross-device resume access.
+AI-generated resume content.

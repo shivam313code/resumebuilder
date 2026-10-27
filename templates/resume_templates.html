@@ -4,12 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8fc">
-  <title>Choose a Resume Template — Build Anything</title>
+  <title>Resume Template Gallery — Build Anything</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  {% if razorpay_ready %}<script src="https://checkout.razorpay.com/v1/checkout.js"></script>{% endif %}
 </head>
 <body class="template-picker-page">
   <header class="home-nav">
@@ -22,8 +21,8 @@
     <section class="picker-heading">
       <div class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</div>
       <h1>Choose your resume style.</h1>
-      <p>Pick a design to preview while you build. All seven templates use the same live editor.</p>
-      <div class="template-count"><span>07</span> DESIGNS <i></i> <span>05</span> FREE <i></i> <span>02</span> PREMIUM</div>
+      <p>Preview five resume designs. Pick one to open the live editor and add your details.</p>
+      <div class="template-count"><span>5</span> DESIGNS <i></i> ALL FREE</div>
     </section>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -32,101 +31,37 @@
 
     <div class="template-grid">
       {% for template in templates %}
-      <article class="template-choice{% if template.tier == 'premium' %} template-choice-premium{% endif %}">
+      <article class="template-choice">
         <div class="template-art template-art-{{ template.id }}" aria-hidden="true">
-          <div class="mini-resume">
-            <div class="mini-resume-head"><span class="mini-name"></span><span class="mini-title"></span><span class="mini-contact"></span></div>
-            <div class="mini-resume-body">
-              <div class="mini-sidebar"><span class="mini-section"></span><span class="mini-line short"></span><span class="mini-line"></span><span class="mini-line mid"></span><span class="mini-section second"></span><span class="mini-chip"></span><span class="mini-chip"></span><span class="mini-chip small"></span></div>
-              <div class="mini-main"><span class="mini-section"></span><span class="mini-line"></span><span class="mini-line"></span><span class="mini-line mid"></span><span class="mini-section second"></span><span class="mini-entry"></span><span class="mini-line"></span><span class="mini-line mid"></span><span class="mini-entry"></span><span class="mini-line"></span><span class="mini-line short"></span></div>
+          <div class="mini-resume mini-template-{{ template.id }}">
+            <header class="mini-resume-head">
+              <h3>Jordan Lee</h3>
+              <p>Product Designer</p>
+              <div class="mini-contact">Brooklyn, NY <span>·</span> jordan.lee@email.com <span>·</span> linkedin.com/in/jordanlee</div>
+            </header>
+            <aside class="mini-resume-sidebar">
+              <section><h4>Skills</h4><p>Product strategy</p><p>UX research</p><p>Prototyping</p><p>Figma</p></section>
+              <section><h4>Languages</h4><p>English</p><p>Spanish</p></section>
+            </aside>
+            <div class="mini-resume-main">
+              <section><h4>Profile</h4><p>Product designer creating clear, accessible experiences. Skilled at turning user insight into thoughtful products.</p></section>
+              <section><h4>Experience</h4><h5>Senior Product Designer</h5><p class="mini-meta">Northstar Studio · 2021–Present</p><p>Led mobile onboarding improvements, increasing completion by 28%. Partnered with product and engineering from research through launch.</p><h5>Product Designer</h5><p class="mini-meta">Brightside Digital · 2018–2021</p><p>Built an accessible design system and streamlined collaboration across three product teams.</p></section>
+              <section><h4>Education</h4><h5>BFA, Communication Design</h5><p class="mini-meta">Parsons School of Design · 2018</p></section>
             </div>
           </div>
-          <span class="template-rank">0{{ loop.index }}</span>
-          {% if template.tier == 'premium' %}<span class="premium-ribbon">PREMIUM</span>{% endif %}
+          <span class="template-rank">{{ "%02d"|format(loop.index) }}</span>
         </div>
         <div class="template-choice-copy">
           <div class="template-choice-meta">
-            <span class="template-tier{% if template.tier == 'premium' %} premium-tier{% endif %}">{% if template.tier == 'premium' %}PREMIUM · ₹{{ premium_price }}{% else %}FREE{% endif %}</span>
-            {% if loop.index == 1 %}<span class="best-pick">BEST VISUAL</span>{% endif %}
+            <span class="template-tier">FREE TEMPLATE</span>
           </div>
           <h2>{{ template.name }}</h2>
           <p>{{ template.description }}</p>
-          {% if template.tier == 'free' %}
-            <a class="template-action free-action" href="{{ url_for('edit_resume', template_id=template.id) }}">Use free template <span aria-hidden="true">→</span></a>
-          {% elif template.id in paid_templates %}
-            <a class="template-action premium-action" href="{{ url_for('edit_resume', template_id=template.id) }}">Use your template <span aria-hidden="true">→</span></a>
-          {% elif razorpay_ready %}
-            <button class="template-action premium-action" type="button" data-buy-template="{{ template.id }}">Unlock for ₹{{ premium_price }} <span aria-hidden="true">→</span></button>
-          {% else %}
-            <button class="template-action unavailable-action" type="button" disabled>Payment setup required</button>
-          {% endif %}
+          <a class="template-action free-action" href="{{ url_for('edit_resume', template_id=template.id) }}">Use this template <span aria-hidden="true">→</span></a>
         </div>
       </article>
       {% endfor %}
     </div>
-    <div class="checkout-message" id="checkout-message" role="status" aria-live="polite"></div>
-    {% if not razorpay_ready %}
-    <aside class="payment-setup-note"><strong>Premium checkout needs setup.</strong> Add your Razorpay test or live credentials as <code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code> environment variables. Premium designs stay locked until payment is verified.</aside>
-    {% else %}
-    <p class="payment-secure-note">Secure checkout powered by Razorpay. Your card details are handled by Razorpay.</p>
-    {% endif %}
   </main>
-
-  {% if razorpay_ready %}
-  <script>
-    const paymentCsrfToken = {{ csrf_token | tojson }};
-    const checkoutMessage = document.querySelector("#checkout-message");
-
-    async function startTemplateCheckout(templateId, button) {
-      button.disabled = true;
-      checkoutMessage.textContent = "Preparing secure checkout…";
-      try {
-        const response = await fetch("{{ url_for('create_resume_template_order') }}", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": paymentCsrfToken },
-          body: JSON.stringify({ template_id: templateId })
-        });
-        const order = await response.json();
-        if (!response.ok) throw new Error(order.error || "Could not start checkout.");
-
-        const checkout = new Razorpay({
-          key: order.key_id,
-          amount: order.amount,
-          currency: order.currency,
-          name: order.name,
-          description: order.description,
-          order_id: order.order_id,
-          handler: async (payment) => {
-            checkoutMessage.textContent = "Verifying your payment…";
-            try {
-              const verification = await fetch("{{ url_for('verify_resume_template_payment') }}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-CSRF-Token": paymentCsrfToken },
-                body: JSON.stringify(payment)
-              });
-              const result = await verification.json();
-              if (!verification.ok) throw new Error(result.error || "Payment verification failed.");
-              window.location.assign(result.redirect);
-            } catch (error) {
-              checkoutMessage.textContent = error.message;
-              button.disabled = false;
-            }
-          },
-          modal: { ondismiss: () => { checkoutMessage.textContent = "Checkout closed. You have not been charged by this site."; button.disabled = false; } },
-          theme: { color: "#6558d3" }
-        });
-        checkout.open();
-        checkoutMessage.textContent = "";
-      } catch (error) {
-        checkoutMessage.textContent = error.message;
-        button.disabled = false;
-      }
-    }
-
-    document.querySelectorAll("[data-buy-template]").forEach((button) => {
-      button.addEventListener("click", () => startTemplateCheckout(button.dataset.buyTemplate, button));
-    });
-  </script>
-  {% endif %}
 </body>
 </html>
