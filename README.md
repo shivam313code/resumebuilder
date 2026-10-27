@@ -27,6 +27,44 @@ commands using the environment's executable directly:
 .\.venv\Scripts\python.exe 1.py
 ```
 
+## Configuration
+
+`APP_ENV` selects `development`, `testing`, or `production` and defaults to
+`development`. Debug mode is off by default; set `FLASK_DEBUG=true` only for
+local development when you need the debugger. Production always disables debug
+mode and requires a stable `FLASK_SECRET_KEY` supplied by the deployment
+environment or secrets manager. Do not commit production secrets.
+
+For example, in PowerShell before starting a production WSGI server:
+
+```powershell
+$env:APP_ENV = "production"
+$env:FLASK_SECRET_KEY = "<set-this-through-your-deployment-secret-store>"
+```
+
+Install the production server dependency on the Linux deployment host with
+`python -m pip install -r requirements-prod.txt`, then start the application
+from the project root using:
+
+```sh
+gunicorn --bind 0.0.0.0:8000 wsgi:app
+```
+
+Keep the reverse proxy or managed platform responsible for HTTPS and forward
+requests to Gunicorn. Do not expose Flask's development server publicly.
+
+## Tests and lint
+
+Install development tools and run the CI checks locally:
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python -m ruff check .
+```
+
+GitHub Actions runs the same lint and test commands on pushes and pull requests.
+
 Uploads are limited to 20 MB. PDF conversion uses `pdf2docx`, and photo resizing
 uses Pillow. Supported photo formats are JPG, PNG, and WebP; the selected
 reduction percentage is applied to both image dimensions.

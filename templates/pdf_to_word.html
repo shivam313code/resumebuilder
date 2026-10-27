@@ -20,7 +20,7 @@
       <span class="tool-icon word-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.75h7l4.25 4.5v12H7a2 2 0 0 1-2-2v-12a2.5 2.5 0 0 1 2-2.5Z"/><path d="M14 4v5h4M8.5 13h7M8.5 16h4"/></svg></span>
       <div><div class="eyebrow">DOCUMENT TOOL</div><h1>PDF to Word</h1><p>Convert your PDF into an editable Word document.</p></div>
     </section>
-    <form class="tool-form" action="{{ url_for('pdf_to_word') }}" method="post" enctype="multipart/form-data">
+    <form class="tool-form" action="{{ url_for('tools.pdf_to_word') }}" method="post" enctype="multipart/form-data">
       <label class="upload-zone" for="pdf-file">
         <span class="upload-symbol">↑</span><strong>Choose a PDF to convert</strong><span class="upload-description">Select a file from your device. Maximum file size: 20 MB.</span>
         <span class="upload-button">Choose PDF</span>
