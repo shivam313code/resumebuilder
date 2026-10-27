@@ -26,6 +26,59 @@ const defaultEntries = {
   ]
 };
 
+const entrySuggestions = {
+  roles: [
+    "Account Manager", "Accountant", "Administrative Assistant", "Android Developer", "AI Engineer",
+    "Architect", "Business Analyst", "Business Development Manager", "Cloud Engineer", "Content Writer",
+    "Customer Success Manager", "Cybersecurity Analyst", "Data Analyst", "Data Engineer", "Data Scientist",
+    "Database Administrator", "DevOps Engineer", "Digital Marketing Manager", "Electrical Engineer",
+    "Finance Manager", "Financial Analyst", "Frontend Developer", "Full Stack Developer", "Graphic Designer",
+    "HR Business Partner", "HR Manager", "IT Support Engineer", "iOS Developer", "Java Developer",
+    "Machine Learning Engineer", "Marketing Manager", "Mechanical Engineer", "Operations Manager",
+    "Product Designer", "Product Manager", "Project Manager", "QA Engineer", "Recruiter",
+    "Research Analyst", "Sales Executive", "Sales Manager", "SEO Specialist", "Software Developer",
+    "Software Engineer", "Solutions Architect", "Supply Chain Analyst", "Technical Lead", "UX Designer",
+    "UX Researcher", "Web Developer"
+  ],
+  companies: [
+    "Accenture", "Adobe", "Airbnb", "Amazon", "American Express", "Atlassian", "BCG", "Capgemini",
+    "Cisco", "Cognizant", "Deloitte", "DHL", "Flipkart", "Freshworks", "Goldman Sachs", "Google",
+    "HCLTech", "IBM", "Infosys", "Intel", "JP Morgan", "KPMG", "L&T", "LinkedIn", "Mahindra",
+    "Mastercard", "Meta", "Microsoft", "Mphasis", "Netflix", "Oracle", "PayPal", "PhonePe", "PwC",
+    "Razorpay", "Salesforce", "Samsung", "ServiceNow", "Shopify", "Spotify", "Swiggy", "TCS",
+    "Tech Mahindra", "Tata Motors", "Target", "Uber", "Walmart", "Wipro", "Zoho"
+  ],
+  locations: [
+    "Ahmedabad, India", "Amritsar, India", "Atlanta, United States", "Austin, United States",
+    "Bengaluru, India", "Bhopal, India", "Boston, United States", "Bhubaneswar, India",
+    "Chandigarh, India", "Chennai, India", "Chicago, United States", "Coimbatore, India",
+    "Delhi, India", "Dubai, UAE", "Gurugram, India", "Guwahati, India", "Hyderabad, India",
+    "Indore, India", "Jaipur, India", "Kochi, India", "Kolkata, India", "London, United Kingdom",
+    "Los Angeles, United States", "Lucknow, India", "Madurai, India", "Manchester, United Kingdom",
+    "Mangaluru, India", "Melbourne, Australia", "Miami, United States", "Mumbai, India",
+    "Mysuru, India", "Nagpur, India", "Nashik, India", "New York, United States",
+    "Noida, India", "Patna, India", "Pune, India", "Remote", "San Francisco, United States",
+    "Seattle, United States", "Singapore", "Surat, India", "Thiruvananthapuram, India",
+    "Toronto, Canada", "Vadodara, India", "Visakhapatnam, India", "Work from home"
+  ],
+  degrees: [
+    "Associate Degree", "Bachelor of Arts (BA)", "Bachelor of Business Administration (BBA)",
+    "Bachelor of Commerce (BCom)", "Bachelor of Computer Applications (BCA)",
+    "Bachelor of Engineering (BE)", "Bachelor of Science (BSc)", "Bachelor of Technology (BTech)",
+    "Chartered Accountancy (CA)", "Diploma", "Doctor of Philosophy (PhD)",
+    "Master of Arts (MA)", "Master of Business Administration (MBA)",
+    "Master of Computer Applications (MCA)", "Master of Commerce (MCom)",
+    "Master of Science (MSc)", "Master of Technology (MTech)", "Secondary School Certificate",
+    "Higher Secondary Certificate", "Vocational Certificate"
+  ],
+  schools: [
+    "Amity University", "Anna University", "Delhi University", "IIT Bombay", "IIT Delhi",
+    "IIT Madras", "IIT Kanpur", "IIT Kharagpur", "IIT Roorkee", "IIM Ahmedabad", "IIM Bangalore",
+    "IIM Calcutta", "IIM Lucknow", "Manipal Academy of Higher Education", "Mumbai University",
+    "National Institute of Technology", "Savitribai Phule Pune University", "University of Hyderabad"
+  ]
+};
+
 const form = document.querySelector("#resume-form");
 const status = document.querySelector("#save-status");
 const defaults = Object.fromEntries(new FormData(form).entries());
@@ -43,12 +96,57 @@ function readForm() {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+function toDateInputValue(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return value;
+  const match = /^(\d{2})-(\d{2})-(\d{2})$/.exec(value || "");
+  if (!match) return "";
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const shortYear = Number(match[3]);
+  const year = shortYear < 70 ? 2000 + shortYear : 1900 + shortYear;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return "";
+  return `${year}-${match[2]}-${match[1]}`;
+}
+
+function formatResumeDate(value) {
+  const isoDate = toDateInputValue(value);
+  if (!isoDate) return value || "";
+  const [year, month, day] = isoDate.split("-");
+  return `${day}-${month}-${year.slice(-2)}`;
+}
+
+function renderSuggestionLists() {
+  for (const [key, suggestions] of Object.entries(entrySuggestions)) {
+    const datalist = document.createElement("datalist");
+    datalist.id = `${key}-suggestions`;
+    for (const suggestion of [...suggestions, "Other (type your own)"]) {
+      const option = document.createElement("option");
+      option.value = suggestion;
+      datalist.append(option);
+    }
+    document.body.append(datalist);
+  }
+}
+
 function renderEntries(type) {
   const list = document.querySelector(`#${type}-list`);
   const isExperience = type === "experience";
   const fields = isExperience
-    ? [["role", "Job title"], ["company", "Company"], ["location", "Location"], ["dates", "Dates"], ["description", "What did you accomplish?"]]
-    : [["degree", "Degree / course"], ["school", "School"], ["location", "Location"], ["dates", "Dates"], ["description", "Additional details"]];
+    ? [
+      ["role", "Job title", "roles", "text"],
+      ["company", "Company", "companies", "text"],
+      ["location", "Location", "locations", "text"],
+      ["dates", "Date", "", "date"],
+      ["description", "What did you accomplish?", "", "textarea"]
+    ]
+    : [
+      ["degree", "Degree / course", "degrees", "text"],
+      ["school", "School", "schools", "text"],
+      ["location", "Location", "locations", "text"],
+      ["dates", "Date", "", "date"],
+      ["description", "Additional details", "", "textarea"]
+    ];
 
   list.innerHTML = entries[type].map((entry, index) => `
     <div class="entry-card" data-entry-type="${type}" data-entry-index="${index}">
@@ -56,11 +154,30 @@ function renderEntries(type) {
         <button class="remove-entry" type="button" aria-label="Remove ${isExperience ? "experience" : "education"} entry" data-remove="${index}">×</button>
       </div>
       <div class="entry-fields">
-        ${fields.map(([key, label]) => `<label class="field ${key === "description" ? "entry-description" : ""}">${label}
-          ${key === "description"
-            ? `<textarea data-key="${key}" rows="3" placeholder="${label}">${escapeHtml(entry[key] || "")}</textarea>`
-            : `<input data-key="${key}" value="${escapeHtml(entry[key] || "")}" placeholder="${label}">`}
-        </label>`).join("")}
+        ${fields.map(([key, label, suggestionKey, fieldType]) => {
+          const fieldId = `${type}-${index}-${key}`;
+          if (fieldType === "textarea") {
+            return `<label class="field entry-description" for="${fieldId}">${label}
+              <textarea id="${fieldId}" data-key="${key}" rows="3" placeholder="${label}">${escapeHtml(entry[key] || "")}</textarea>
+            </label>`;
+          }
+          if (fieldType === "date") {
+            const legacyDate = entry[key] && !toDateInputValue(entry[key]);
+            return `<label class="field entry-date-field" for="${fieldId}">${label}
+              <div class="date-field-control">
+                <input id="${fieldId}" type="text" data-key="${key}" value="${escapeHtml(formatResumeDate(entry[key]))}" placeholder="DD-MM-YY" aria-describedby="${fieldId}-hint" inputmode="numeric">
+                <button class="date-picker-button" type="button" data-open-date-picker aria-label="Choose ${label.toLowerCase()} from calendar">▦</button>
+                <input class="date-picker-input" type="date" data-date-picker="${fieldId}" tabindex="-1" aria-hidden="true">
+              </div>
+              <small id="${fieldId}-hint" class="field-hint">${legacyDate
+                ? `Saved date text retained. Enter DD-MM-YY or choose a calendar date.`
+                : "Enter DD-MM-YY or choose a calendar date."}</small>
+            </label>`;
+          }
+          return `<label class="field" for="${fieldId}">${label}
+            <input id="${fieldId}" data-key="${key}" data-suggestion="${suggestionKey}" list="${suggestionKey}-suggestions" value="${escapeHtml(entry[key] || "")}" placeholder="Search or type your own">
+          </label>`;
+        }).join("")}
       </div>
     </div>`).join("");
 
@@ -69,13 +186,46 @@ function renderEntries(type) {
       const { entryIndex, entryType } = card.dataset;
       const key = event.target.dataset.key;
       if (!key) return;
-      entries[entryType][Number(entryIndex)][key] = event.target.value;
+      const value = event.target.value === "Other (type your own)" ? "" : event.target.value;
+      if (event.target.value === "Other (type your own)") {
+        event.target.value = "";
+        event.target.placeholder = "Type your own value";
+      }
+      entries[entryType][Number(entryIndex)][key] = value;
+      if (key === "dates") {
+        const picker = card.querySelector(`[data-date-picker="${event.target.id}"]`);
+        const parsedDate = toDateInputValue(value);
+        picker.value = parsedDate;
+        const hint = card.querySelector(`#${event.target.id}-hint`);
+        const invalidDate = value && !parsedDate;
+        event.target.setAttribute("aria-invalid", String(Boolean(invalidDate)));
+        hint.textContent = invalidDate
+          ? "Enter a valid date as DD-MM-YY or choose a calendar date."
+          : value ? `Resume date: ${formatResumeDate(value)} · DD-MM-YY` : "Enter DD-MM-YY or choose a calendar date.";
+      }
       renderPreview();
       if (key === "role" || key === "degree") {
         const title = card.querySelector(".entry-card-top span");
-        title.textContent = event.target.value || (entryType === "experience" ? "New position" : "New education");
+        title.textContent = value || (entryType === "experience" ? "New position" : "New education");
       }
       scheduleSave();
+      refreshAnalysisIfVisible();
+    });
+  });
+  list.querySelectorAll("[data-open-date-picker]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const card = button.closest(".entry-card");
+      const picker = card.querySelector("[data-date-picker]");
+      if (typeof picker.showPicker === "function") picker.showPicker();
+      else picker.click();
+    });
+  });
+  list.querySelectorAll("[data-date-picker]").forEach((picker) => {
+    picker.addEventListener("change", () => {
+      const card = picker.closest(".entry-card");
+      const dateInput = card.querySelector(`#${picker.dataset.datePicker}`);
+      dateInput.value = formatResumeDate(picker.value);
+      dateInput.dispatchEvent(new Event("input", { bubbles: true }));
     });
   });
   list.querySelectorAll("[data-remove]").forEach((button) => {
@@ -84,6 +234,7 @@ function renderEntries(type) {
       renderEntries(type);
       renderPreview();
       scheduleSave();
+      refreshAnalysisIfVisible();
     });
   });
 }
@@ -98,13 +249,13 @@ function renderPreview() {
   document.querySelector('[data-preview="summary"]').textContent = data.summary.trim();
   document.querySelector("#preview-experience").innerHTML = entries.experience.map((entry) => `
     <div class="resume-entry">
-      <div class="resume-entry-heading"><strong>${escapeHtml(entry.role || "")}</strong><span class="resume-entry-date">${escapeHtml(entry.dates || "")}</span></div>
+      <div class="resume-entry-heading"><strong>${escapeHtml(entry.role || "")}</strong><span class="resume-entry-date">${escapeHtml(formatResumeDate(entry.dates))}</span></div>
       <p class="resume-entry-subtitle">${escapeHtml([entry.company, entry.location].filter(Boolean).join(" · "))}</p>
       ${entry.description ? `<p class="resume-entry-description">${escapeHtml(entry.description)}</p>` : ""}
     </div>`).join("");
   document.querySelector("#preview-education").innerHTML = entries.education.map((entry) => `
     <div class="resume-entry">
-      <div class="resume-entry-heading"><strong>${escapeHtml(entry.degree || "")}</strong><span class="resume-entry-date">${escapeHtml(entry.dates || "")}</span></div>
+      <div class="resume-entry-heading"><strong>${escapeHtml(entry.degree || "")}</strong><span class="resume-entry-date">${escapeHtml(formatResumeDate(entry.dates))}</span></div>
       <p class="resume-entry-subtitle">${escapeHtml([entry.school, entry.location].filter(Boolean).join(" · "))}</p>
       ${entry.description ? `<p class="resume-entry-description">${escapeHtml(entry.description)}</p>` : ""}
     </div>`).join("");
@@ -193,19 +344,25 @@ document.querySelector("#add-experience").addEventListener("click", () => {
   renderEntries("experience");
   renderPreview();
   scheduleSave();
+  refreshAnalysisIfVisible();
 });
 document.querySelector("#add-education").addEventListener("click", () => {
   entries.education.push({ degree: "", school: "", location: "", dates: "", description: "" });
   renderEntries("education");
   renderPreview();
   scheduleSave();
+  refreshAnalysisIfVisible();
 });
 form.addEventListener("input", () => {
   renderPreview();
   scheduleSave();
+  refreshAnalysisIfVisible();
 });
 document.querySelector("#download-button").addEventListener("click", () => window.print());
-document.querySelector("#job-description").addEventListener("input", scheduleSave);
+document.querySelector("#job-description").addEventListener("input", () => {
+  scheduleSave();
+  refreshAnalysisIfVisible();
+});
 document.querySelector("#analyze-button").addEventListener("click", analyzeResume);
 document.querySelector("#reset-button").addEventListener("click", () => {
   if (!window.confirm("Start over and clear your saved resume draft?")) return;
@@ -234,97 +391,150 @@ function getResumeText(data) {
     ...Object.values(data),
     ...entries.experience.flatMap((entry) => Object.values(entry)),
     ...entries.education.flatMap((entry) => Object.values(entry))
-  ].join(" ").toLowerCase();
+  ].join(" ");
+}
+
+function normalizeMatchText(value) {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[‐‑‒–—-]/g, " ")
+    .replace(/\bux\s+research\b/g, " user research ")
+    .replace(/\bux\s+design\b/g, " user experience design ")
+    .replace(/\bux\b/g, " user experience ")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9+#]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function extractJobKeywords(jobDescription) {
   const ignored = new Set([
-    "about", "above", "after", "again", "against", "also", "among", "an", "and", "any", "are", "as",
-    "at", "be", "because", "by",
-    "been", "being", "below", "both", "but", "can", "could", "demonstrated", "does", "doing", "down",
-    "during", "each", "excellent", "for", "from", "further", "have", "having", "here", "into", "its",
-    "in", "is", "more", "most", "must", "not", "of", "on", "only", "or", "other", "our", "out", "over", "per",
-    "same", "should",
-    "some", "such", "than", "that", "the", "their", "them", "then", "there", "these", "they", "this",
-    "those", "through", "to", "under", "using", "very", "was", "want", "were", "what", "when", "where",
-    "which", "while", "will", "with", "work", "working", "you", "your", "years", "experience", "skills",
-    "ability", "strong", "including", "required", "preferred", "responsibilities", "responsible",
-    "candidate", "candidates", "team", "teams", "job", "description", "opportunity", "looking"
+    "a", "about", "above", "after", "again", "against", "all", "also", "am", "an", "and", "any",
+    "are", "as", "at", "be", "because", "been", "being", "below", "both", "but", "by", "can",
+    "could", "demonstrated", "does", "doing", "down", "during", "each", "excellent", "for", "from",
+    "further", "have", "having", "here", "how", "i", "if", "in", "into", "is", "it", "its", "looking",
+    "me", "more", "most", "must", "of", "on", "only", "or", "other", "our", "out", "over", "per",
+    "same", "should", "so", "some", "such", "than", "that", "the", "their", "them", "then", "there",
+    "these", "they", "this", "those", "through", "to", "under", "up", "us", "using", "very", "was",
+    "we", "were", "what", "when", "where", "which", "while", "will", "with", "work", "working",
+    "you", "your", "years", "year", "experience", "experiences", "skill", "skills", "ability",
+    "strong", "including", "required", "preferred", "responsibilities", "responsible", "candidate",
+    "candidates", "team", "teams", "job", "description", "opportunity", "role", "position"
   ]);
+  const preparedDescription = String(jobDescription)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[‐‑‒–—-]/g, " ")
+    .replace(/\bux\s+research\b/g, " user research ")
+    .replace(/\bux\s+design\b/g, " user experience design ")
+    .replace(/\bux\b/g, " user experience ")
+    .replace(/&/g, " and ");
   const frequencies = new Map();
-  const matches = [...jobDescription.toLowerCase().matchAll(/[a-z][a-z0-9+#.-]{1,}/g)];
-  const words = matches.map((match) => match[0].replace(/^[.-]+|[.-]+$/g, ""));
-  const addCandidate = (keyword) => {
-    frequencies.set(keyword, (frequencies.get(keyword) || 0) + 1);
+  const matches = [...preparedDescription.matchAll(/[a-z][a-z0-9+#]*/g)];
+  const words = matches.map((match) => match[0]);
+  const addCandidate = (keyword, weight) => {
+    frequencies.set(keyword, (frequencies.get(keyword) || 0) + weight);
   };
   words.forEach((word, index) => {
-    if (word.length >= 2 && !ignored.has(word) && !/^\d+$/.test(word)) addCandidate(word);
     const nextWord = words[index + 1];
+    if (word.length >= 2 && !ignored.has(word) && !/^\d+$/.test(word)) addCandidate(word, 1);
     const gap = index < matches.length - 1
-      ? jobDescription.slice(matches[index].index + matches[index][0].length, matches[index + 1].index)
+      ? preparedDescription.slice(matches[index].index + matches[index][0].length, matches[index + 1].index)
       : "";
     if (nextWord && /^\s+$/.test(gap) && !ignored.has(word) && !ignored.has(nextWord)) {
-      addCandidate(`${word} ${nextWord}`);
+      addCandidate(`${word} ${nextWord}`, 3);
     }
   });
   const rankedKeywords = [...frequencies.entries()]
-    .sort((left, right) => right[1] - left[1] || right[0].length - left[0].length || left[0].localeCompare(right[0]))
-    .slice(0, 15)
-    .map(([keyword]) => keyword);
-  const phrases = rankedKeywords.filter((keyword) => keyword.includes(" "));
-  return rankedKeywords.filter((keyword) =>
-    keyword.includes(" ") || !phrases.some((phrase) => phrase.split(" ").includes(keyword))
-  );
+    .sort((left, right) => right[1] - left[1] || right[0].length - left[0].length || left[0].localeCompare(right[0]));
+  const selected = rankedKeywords.slice(0, 15).map(([keyword]) => keyword);
+  const phrases = selected.filter((keyword) => keyword.includes(" "));
+  return selected.filter((keyword) => keyword.includes(" ") ||
+    !phrases.some((phrase) => phrase.split(" ").includes(keyword)));
 }
 
 function analyzeResume() {
   const data = readForm();
   const checks = [
-    { label: "Contact details include an email address", passed: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()), weight: 15 },
-    { label: "Professional title is included", passed: Boolean(data.title.trim()), weight: 10 },
-    { label: "Professional summary is included", passed: data.summary.trim().length >= 40, weight: 15 },
-    { label: "At least one role includes a title and employer", passed: entries.experience.some((item) => item.role.trim() && item.company.trim()), weight: 20 },
-    { label: "At least one education entry is complete", passed: entries.education.some((item) => item.degree.trim() && item.school.trim()), weight: 10 },
-    { label: "Skills are listed", passed: data.skills.split(",").some((skill) => skill.trim()), weight: 15 },
+    {
+      label: "Your name and professional title are present",
+      passed: Boolean(data.name.trim() && data.title.trim()),
+      guidance: "Add your name and the role you are targeting."
+    },
+    {
+      label: "Contact details include a valid email address",
+      passed: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()),
+      guidance: "Check that your email address is complete and correctly formatted."
+    },
+    {
+      label: "Professional summary has useful detail",
+      passed: data.summary.trim().length >= 40,
+      guidance: "Add a concise summary of your background and relevant strengths."
+    },
+    {
+      label: "At least one work experience entry has a title and employer",
+      passed: entries.experience.some((item) => item.role.trim() && item.company.trim()),
+      guidance: "Add a role and employer, or include relevant projects if you are early in your career."
+    },
+    {
+      label: "Skills are listed",
+      passed: data.skills.split(",").some((skill) => skill.trim()),
+      guidance: "Add relevant skills, separated by commas."
+    },
     {
       label: "Experience describes outcomes or measurable results",
       passed: entries.experience.some((item) => /\d|%|\b(increased|improved|reduced|delivered|launched|led|built|created|achieved|saved|grew)\b/i.test(item.description)),
-      weight: 15
+      guidance: "Where accurate, describe your contribution and its result or impact."
     }
   ];
-  const score = checks.reduce((total, check) => total + (check.passed ? check.weight : 0), 0);
   const jobDescription = document.querySelector("#job-description").value.trim();
-  const resumeText = getResumeText(data);
+  const resumeText = ` ${normalizeMatchText(getResumeText(data))} `;
   const keywords = jobDescription ? extractJobKeywords(jobDescription) : [];
-  const matchedKeywords = keywords.filter((keyword) => new RegExp(`(^|[^a-z0-9+#])${escapeRegExp(keyword)}([^a-z0-9+#]|$)`, "i").test(resumeText));
+  const matchedKeywords = keywords.filter((keyword) => {
+    const normalizedKeyword = normalizeMatchText(keyword);
+    return normalizedKeyword && resumeText.includes(` ${normalizedKeyword} `);
+  });
   const missingKeywords = keywords.filter((keyword) => !matchedKeywords.includes(keyword));
   const results = document.querySelector("#analysis-results");
-  const scoreLabel = score >= 80 ? "Strong foundation" : score >= 55 ? "Room to improve" : "Needs attention";
+  const checksPassed = checks.filter((check) => check.passed).length;
   const checklist = checks.map((check) =>
-    `<li class="${check.passed ? "check-passed" : "check-missed"}"><span aria-hidden="true">${check.passed ? "✓" : "!"}</span>${escapeHtml(check.label)}</li>`
+    `<li class="${check.passed ? "check-passed" : "check-missed"}">
+      <span aria-hidden="true">${check.passed ? "✓" : "!"}</span>
+      <div>${escapeHtml(check.label)}${check.passed ? "" : `<small>${escapeHtml(check.guidance)}</small>`}</div>
+    </li>`
   ).join("");
+  const matchPercentage = keywords.length
+    ? Math.round(matchedKeywords.length / keywords.length * 100)
+    : 0;
+  const matchLabel = keywords.length
+    ? `${matchPercentage}% keyword overlap`
+    : "Not enough distinct role-related terms to compare.";
   const jobResult = jobDescription
     ? `<section class="match-results"><h3>Job description match</h3>
         ${keywords.length
-          ? `<p><strong>${matchedKeywords.length} of ${keywords.length}</strong> highlighted job-description terms found in your resume content.</p>`
+          ? `<p class="match-score"><strong>${escapeHtml(matchLabel)}</strong> <span>${matchedKeywords.length} of ${keywords.length} highlighted terms found in your resume.</span></p>`
           : "<p>There were not enough specific terms to compare. Try pasting more of the job description.</p>"}
         ${matchedKeywords.length ? `<div class="keyword-group"><strong>Found</strong><p>${matchedKeywords.map(escapeHtml).join(", ")}</p></div>` : ""}
         ${missingKeywords.length ? `<div class="keyword-group keyword-gap"><strong>Not found — review these</strong><p>${missingKeywords.map(escapeHtml).join(", ")}</p><small>Only add a term if it accurately reflects your skills or experience. Consider describing relevant work using the employer’s wording.</small></div>` : ""}
-        <small>Keyword comparison is a simple local text match, not an employer ATS simulation.</small>
+        <small>Terms are matched against the resume fields above. This is a basic text comparison, not an employer ATS simulation. Only include terms that accurately describe your experience.</small>
       </section>`
     : `<p class="analysis-prompt">Paste a job description above to compare its terms with your resume.</p>`;
 
-  results.innerHTML = `<div class="score-summary"><div><span class="eyebrow">RESUME READINESS CHECKLIST</span><strong class="score-value">${score}<span>/100</span></strong></div><span class="score-label">${scoreLabel}</span></div>
-    <p class="score-disclaimer">A transparent checklist of common resume basics, not a prediction of how any employer’s ATS will rank your application.</p>
+  results.innerHTML = `<div class="score-summary"><div><span class="eyebrow">RESUME CONTENT CHECK</span><strong class="score-value">${checksPassed}<span>/${checks.length} checks</span></strong></div><span class="score-label">${checksPassed === checks.length ? "All checks met" : `${checks.length - checksPassed} to review`}</span></div>
+    <p class="score-disclaimer">A content checklist—not an ATS score or a prediction of how an employer will rank your application. Education is optional and is not scored here.</p>
     <ul class="checklist-results">${checklist}</ul>${jobResult}`;
   results.hidden = false;
 }
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function refreshAnalysisIfVisible() {
+  if (!document.querySelector("#analysis-results").hidden) analyzeResume();
 }
 
 loadDraft();
+renderSuggestionLists();
 renderEntries("experience");
 renderEntries("education");
 renderPreview();

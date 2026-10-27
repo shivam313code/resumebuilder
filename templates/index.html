@@ -29,7 +29,7 @@
           <h1>Build your resume</h1>
           <p>Using {{ template.name }}. Your changes show up instantly.</p>
         </div>
-        <div class="editor-actions"><a class="text-button" href="{{ url_for('resume_builder') }}">Change template</a><button class="text-button" id="reset-button" type="button">Start over</button></div>
+        <div class="editor-actions">{% if template_change_url is defined %}<a class="text-button" href="{{ template_change_url }}">Change template</a>{% endif %}<button class="text-button" id="reset-button" type="button">Start over</button></div>
       </div>
 
       <div class="progress-card">
@@ -53,12 +53,12 @@
         </section>
 
         <section class="form-section">
-          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-blue">↗</span><div><h2>Work experience</h2><p>Show the impact you’ve made</p></div></div><button class="add-button" id="add-experience" type="button">＋ Add</button></div>
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-blue">↗</span><div><h2>Work experience</h2><p>Search suggestions or type your own details. Dates display as DD-MM-YY.</p></div></div><button class="add-button" id="add-experience" type="button">＋ Add</button></div>
           <div id="experience-list" class="entry-list"></div>
         </section>
 
         <section class="form-section">
-          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-purple">⌂</span><div><h2>Education</h2><p>Degrees, courses, and more</p></div></div><button class="add-button" id="add-education" type="button">＋ Add</button></div>
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-purple">⌂</span><div><h2>Education</h2><p>Search degree, school, and location suggestions or enter your own.</p></div></div><button class="add-button" id="add-education" type="button">＋ Add</button></div>
           <div id="education-list" class="entry-list"></div>
         </section>
 

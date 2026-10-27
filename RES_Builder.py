@@ -60,7 +60,11 @@ def edit_resume(template_id):
     template = TEMPLATES_BY_ID.get(template_id)
     if template is None:
         return redirect(url_for("resume_builder"))
-    return render_template("index.html", template=template)
+    return render_template(
+        "index.html",
+        template=template,
+        template_change_url=url_for("resume_builder"),
+    )
 
 
 @app.route("/pdf-to-word", methods=["GET", "POST"])

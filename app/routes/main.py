@@ -11,4 +11,5 @@ def index():
 
 @main_blueprint.get("/resume-builder")
 def resume_builder():
-    return render_template("index.html")
+    template = {"id": "plain", "name": "Plain"}
+    return render_template("index.html", template=template)

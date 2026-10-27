@@ -20,7 +20,7 @@
       <span class="tool-icon photo-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m5 17 4.5-4.5 3 3 2.5-2.5 4 4"/></svg></span>
       <div><div class="eyebrow">IMAGE TOOL</div><h1>Photo Resize</h1><p>Reduce your photo dimensions by the percentage you choose.</p></div>
     </section>
-    <form class="tool-form photo-form" action="{{ url_for('tools.photo_resize') }}" method="post" enctype="multipart/form-data">
+    <form class="tool-form photo-form" action="/photo-resize" method="post" enctype="multipart/form-data">
       <label class="upload-zone photo-upload" for="photo-file">
         <span class="upload-symbol">↑</span><strong>Upload a photo</strong><span class="upload-description">JPG, PNG, or WebP. Maximum file size: 20 MB.</span>
         <span class="upload-button">Choose photo</span>

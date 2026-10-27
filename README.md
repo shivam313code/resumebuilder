@@ -78,12 +78,20 @@ The resume builder includes five free, editable layouts: Timeless, Plain,
 Blogger, Pacific, and General ATS. Each design has a visible gallery preview
 that grows by 25% when hovered. Choose a design to open the live resume editor.
 
+Work experience and education fields provide searchable browser suggestions
+for common roles, employers, locations, degrees, and schools. The suggestion
+lists are examples rather than exhaustive catalogs; users can type any custom
+value or select the custom-entry option. Dates can be typed in DD-MM-YY format
+or selected from a calendar; selected dates are shown on the resume in
+DD-MM-YY format. Existing free-form dates remain visible until changed.
+
 ## Resume analysis MVP
 
-The resume builder includes a local ATS-readiness checklist and optional job
-description keyword comparison. The checklist uses visible criteria for
-contact details, resume sections, skills, and evidence of outcomes. The job
-comparison uses a basic keyword-frequency heuristic; it is not an ATS
+The resume builder includes a local resume-content checklist and optional job
+description keyword comparison. The checklist reports which visible content
+checks are met; it is not an ATS score. Job matching compares selected words
+and short phrases with the resume fields, normalizing common punctuation and
+the UX/user-research wording. It is a basic text comparison, not an ATS
 simulation or a guarantee of ranking. Users should only add suggested terms
 when they accurately describe their experience.
 
