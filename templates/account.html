@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090b24">
+  <meta name="description" content="Create your ResumePro account and build your next career opportunity.">
+  <title>{{ "Sign up" if mode == "signup" else "Login" }} — ResumePro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="rp-account-page">
+  <main class="rp-account-layout">
+    <section class="rp-account-promo" aria-label="ResumePro benefits">
+      <header class="rp-account-nav">
+        <a class="rp-brand" href="{{ url_for('main.index') }}" aria-label="ResumePro home"><span class="rp-brand-mark">R</span><span>ResumePro</span></a>
+        <nav aria-label="Main navigation">
+          <a href="{{ url_for('main.index') }}">Home</a>
+          <a href="{{ url_for('main.resume_builder') }}">Templates</a>
+          <a href="{{ url_for('main.index', _anchor='features') }}">AI Tools</a>
+          <a href="{{ url_for('main.index', _anchor='pricing') }}">Pricing</a>
+          <a href="{{ url_for('main.index', _anchor='career-tips') }}">Blog</a>
+        </nav>
+      </header>
+
+      <div class="rp-account-promo-content">
+        <div class="rp-account-kicker"><span>✦</span> YOUR NEXT CHAPTER STARTS HERE</div>
+        <h1>Start Your<br><span>Career Journey</span><br>with ResumePro</h1>
+        <p>Create a professional resume with guided sections, customizable templates, and a content checklist. Your resume draft stays in your browser.</p>
+        <div class="rp-account-perks">
+          <div><span class="rp-perk-symbol">✦</span><span><strong>Resume Writing Guide</strong><small>Build it one section at a time</small></span></div>
+          <div><span class="rp-perk-symbol rp-perk-blue">▤</span><span><strong>Professional Templates</strong><small>Choose from resume designs</small></span></div>
+          <div><span class="rp-perk-symbol rp-perk-teal">▥</span><span><strong>Resume Checklist</strong><small>Review key content sections</small></span></div>
+          <div><span class="rp-perk-symbol rp-perk-pink">♙</span><span><strong>Private by Design</strong><small>Your draft stays in your browser</small></span></div>
+        </div>
+        <div class="rp-account-promo-art" aria-hidden="true">
+          <div class="rp-account-art-orbit"></div>
+          <div class="rp-account-art-sheet">
+            <div class="rp-account-art-avatar">👨🏻‍💻</div><strong>Raghav Sharma</strong><small>Data Scientist</small>
+            <i></i><i></i><i></i><i></i>
+          </div>
+          <div class="rp-account-art-score"><small>ATS Score</small><strong>92%</strong></div>
+          <div class="rp-account-art-bot"><span>● ●</span><i></i><b></b></div>
+          <div class="rp-account-art-pedestal"></div>
+        </div>
+        <div class="rp-account-promo-stats">
+          <div><strong>5</strong><span>Resume Templates</span></div>
+          <div><strong>3</strong><span>Career Tools</span></div>
+          <div><strong>Local</strong><span>Resume Drafts</span></div>
+        </div>
+        <blockquote class="rp-account-quote">
+          <span class="rp-quote-avatar">👩🏻</span>
+          <span><q>Build a polished resume with guided sections and a design that fits your next opportunity.</q><strong>ResumePro &nbsp; <small>Your career toolkit</small></strong></span>
+        </blockquote>
+      </div>
+    </section>
+
+    <section class="rp-account-form-side">
+      <a class="rp-account-mobile-brand" href="{{ url_for('main.index') }}"><span class="rp-brand-mark">R</span> ResumePro</a>
+      <div class="rp-account-card">
+        <div class="rp-account-card-heading">
+          <h2>{{ "Welcome to " if mode == "login" else "Join " }}<span>ResumePro</span></h2>
+          <p>{{ "Sign in to continue building your career." if mode == "login" else "Create your account and take the next step in your career." }}</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="rp-account-message rp-message-{{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+
+        <div class="rp-account-tabs" role="tablist" aria-label="Account options">
+          <a role="tab" aria-selected="{{ 'true' if mode == 'login' else 'false' }}" class="{{ 'is-active' if mode == 'login' else '' }}" href="{{ url_for('auth.login', next=next_url) }}">Login</a>
+          <a role="tab" aria-selected="{{ 'true' if mode == 'signup' else 'false' }}" class="{{ 'is-active' if mode == 'signup' else '' }}" href="{{ url_for('auth.signup', next=next_url) }}">Sign Up</a>
+        </div>
+
+        <div class="rp-social-buttons">
+          <a class="rp-social-button" href="{{ url_for('auth.oauth_login', provider='google', next=next_url) }}" aria-label="Continue with Google">
+            <span class="rp-google-g">G</span><span>Continue with Google</span>{% if not google_enabled %}<small>Not configured</small>{% endif %}
+          </a>
+          <a class="rp-social-button" href="{{ url_for('auth.oauth_login', provider='linkedin', next=next_url) }}" aria-label="Continue with LinkedIn">
+            <span class="rp-linkedin-in">in</span><span>Continue with LinkedIn</span>{% if not linkedin_enabled %}<small>Not configured</small>{% endif %}
+          </a>
+        </div>
+
+        <div class="rp-form-divider"><span>OR</span></div>
+
+        <form class="rp-account-form" method="post" action="{{ url_for('auth.signup' if mode == 'signup' else 'auth.login', next=next_url) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if mode == "signup" %}
+          <label class="rp-account-field">
+            <span>Full Name</span>
+            <span class="rp-account-input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-1.5a7 7 0 0 1 14 0V20z"/></svg><input name="name" type="text" autocomplete="name" maxlength="100" placeholder="Enter your full name" required value="{{ request.form.get('name', '') }}"></span>
+          </label>
+          {% endif %}
+          <label class="rp-account-field">
+            <span>Email Address</span>
+            <span class="rp-account-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m4.5 7 7.5 6 7.5-6"/></svg><input name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email address" required value="{{ request.form.get('email', '') }}"></span>
+          </label>
+          <label class="rp-account-field">
+            <span>Password{% if mode == "signup" %}<small>12–256 characters</small>{% endif %}</span>
+            <span class="rp-account-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3m-4 5v2"/></svg><input id="account-password" name="password" type="password" autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}" minlength="{{ 12 if mode == 'signup' else 1 }}" maxlength="256" placeholder="{{ 'Create a strong password' if mode == 'signup' else 'Enter your password' }}" required><button class="rp-password-toggle" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></span>
+          </label>
+          {% if mode == "signup" %}
+          <label class="rp-account-terms"><input type="checkbox" name="terms" value="accepted" required><span>I agree to the <a href="{{ url_for('auth.terms') }}" target="_blank" rel="noopener">Terms of Service</a> and <a href="{{ url_for('auth.privacy') }}" target="_blank" rel="noopener">Privacy Policy</a></span></label>
+          {% endif %}
+          <button class="rp-account-submit" type="submit">{{ "Sign In" if mode == "login" else "Create Account" }} <span aria-hidden="true">→</span></button>
+        </form>
+
+        <p class="rp-account-switch">{{ "Don't have an account?" if mode == "login" else "Already have an account?" }} <a href="{{ url_for('auth.signup' if mode == 'login' else 'auth.login', next=next_url) }}">{{ "Sign Up" if mode == "login" else "Login" }}</a></p>
+
+        <div class="rp-account-assurances">
+          <div><span>ϟ</span><strong>Free Plan</strong><small>Get started instantly</small></div>
+          <div><span>▣</span><strong>No Credit Card</strong><small>Required</small></div>
+          <div><span>⬟</span><strong>Secure &amp; Private</strong><small>Your data is safe</small></div>
+        </div>
+      </div>
+      <a class="rp-back-home" href="{{ url_for('main.index') }}">← Back to ResumePro</a>
+    </section>
+  </main>
+  <script>
+    const passwordInput = document.querySelector("#account-password");
+    const passwordToggle = document.querySelector(".rp-password-toggle");
+    passwordToggle.addEventListener("click", () => {
+      const showing = passwordInput.type === "password";
+      passwordInput.type = showing ? "text" : "password";
+      passwordToggle.setAttribute("aria-pressed", String(showing));
+      passwordToggle.setAttribute("aria-label", showing ? "Hide password" : "Show password");
+    });
+  </script>
+</body>
+</html>

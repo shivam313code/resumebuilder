@@ -1,5 +1,7 @@
 import os
 import secrets
+from datetime import timedelta
+from pathlib import Path
 
 
 MAX_CONTENT_LENGTH = 20 * 1024 * 1024
@@ -42,4 +44,13 @@ def load_config(environment=None):
         "SESSION_COOKIE_HTTPONLY": True,
         "SESSION_COOKIE_SAMESITE": "Lax",
         "SESSION_COOKIE_SECURE": production,
+        "PERMANENT_SESSION_LIFETIME": timedelta(days=7),
+        "DATABASE": os.environ.get(
+            "RESUMEPRO_DATABASE",
+            str(Path(__file__).resolve().parents[1] / "instance" / "resumebuilder.sqlite3"),
+        ),
+        "GOOGLE_CLIENT_ID": os.environ.get("GOOGLE_CLIENT_ID"),
+        "GOOGLE_CLIENT_SECRET": os.environ.get("GOOGLE_CLIENT_SECRET"),
+        "LINKEDIN_CLIENT_ID": os.environ.get("LINKEDIN_CLIENT_ID"),
+        "LINKEDIN_CLIENT_SECRET": os.environ.get("LINKEDIN_CLIENT_SECRET"),
     }

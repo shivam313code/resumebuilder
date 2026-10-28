@@ -2,6 +2,7 @@ import logging
 
 from flask import Flask, flash, render_template, request, url_for
 
+from .auth import auth_blueprint, init_auth
 from .config import load_config
 from .routes.main import main_blueprint
 from .routes.tools import tools_blueprint
@@ -14,6 +15,8 @@ def create_app(environment=None, config_overrides=None):
         app.config.update(config_overrides)
 
     logging.basicConfig(level=logging.INFO)
+    init_auth(app)
+    app.register_blueprint(auth_blueprint)
     app.register_blueprint(main_blueprint)
     app.register_blueprint(tools_blueprint)
 

@@ -1,7 +1,7 @@
-# Build Anything
+# ResumePro
 
-A lightweight Flask tools website with a resume builder, PDF-to-Word converter,
-and photo resizer. The resume builder includes a live preview. Your resume
+A lightweight Flask website with a resume builder, PDF-to-Word converter, and
+photo resizer. The resume builder includes a live preview. Your resume
 draft is stored in your browser's local storage; its **Download PDF** button
 opens the browser's print dialog, where you can save it as a PDF.
 
@@ -95,7 +95,31 @@ the UX/user-research wording. It is a basic text comparison, not an ATS
 simulation or a guarantee of ranking. Users should only add suggested terms
 when they accurately describe their experience.
 
-Resume drafts and the optional job description are stored in browser local
-storage. They are not synced between devices or protected by an account. This
-MVP does not yet include account registration, a server database, or
-AI-generated resume content.
+## Accounts and sign-in
+
+Email/password registration and login are available at `/signup` and `/login`.
+New accounts are signed in immediately and sent to the resume template gallery.
+Account records are stored in `instance/resumebuilder.sqlite3` (override the
+path with `RESUMEPRO_DATABASE`). Passwords are stored as Werkzeug password
+hashes. Resume drafts and optional job descriptions remain in browser local
+storage; they are not synced between devices or stored on the server.
+
+Google and LinkedIn sign-in are optional. Register OAuth applications with each
+provider and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`LINKEDIN_CLIENT_ID`, and `LINKEDIN_CLIENT_SECRET` in the deployment
+environment. Register these callback URLs with the provider:
+
+- `https://your-domain/auth/google/callback`
+- `https://your-domain/auth/linkedin/callback`
+
+For local development, use the matching `http://127.0.0.1:5000/...` callback
+URLs. Without provider credentials, the buttons explain that social sign-in is
+not configured. Do not put OAuth secrets in source control.
+
+Password reset and email verification are not implemented yet. Add those
+account-recovery and verification flows, and configure rate limiting, before
+opening account registration to the public.
+
+The Terms of Service and Privacy Policy pages are initial product notices, not
+legal advice; have them reviewed before public launch. AI-generated content is
+not currently available.

@@ -8,11 +8,15 @@ The project is a small Flask application with:
 
 - A home page and resume editor rendered with Jinja templates.
 - A live resume preview and browser-based print-to-PDF export.
+- Email/password accounts backed by SQLite, with optional Google and LinkedIn OAuth.
 - Browser-local draft storage; resumes are not synced between devices.
 - PDF-to-Word conversion and photo resizing tools.
-- No user accounts, server-side resume database, AI generation, or billing.
+- No server-side resume database, AI generation, or billing.
 
-The current Flask module is `application.py`; `1.py` remains a backward-compatible local launcher, and `wsgi.py` exposes the app for a production WSGI server. Templates remain under `templates/` and browser assets under `static/`. Keep these features working while introducing the architecture below incrementally.
+`RES_Builder.py` launches the app factory used by `application.py`; `wsgi.py`
+exposes the same app for a production WSGI server. Templates remain under
+`templates/` and browser assets under `static/`. Keep these features working
+while introducing the architecture below incrementally.
 
 ## 2. Recommended product experience
 
@@ -20,7 +24,7 @@ The current Flask module is `application.py`; `1.py` remains a backward-compatib
 2. **Template selection:** Offer a small set of readable, accessible templates. Avoid overly complex layouts that export poorly or are difficult for applicant systems to parse.
 3. **Guided editor:** Collect personal details, summary, experience, education, and skills in focused sections. Allow users to add, edit, reorder, and remove entries.
 4. **Live preview:** Update the resume as the user edits. Show honest completeness checks and useful guidance without claiming to predict hiring outcomes.
-5. **Save and return:** Keep browser-local drafts for the initial version. Add accounts and cross-device sync only when product requirements justify collecting and storing resume data on the server.
+5. **Save and return:** Accounts currently protect the resume-builder entry points, while drafts remain browser-local. Add cross-device sync only when product requirements justify collecting and storing resume data on the server.
 6. **Export:** Retain browser print-to-PDF while validating output across browsers. Add server-side PDF or DOCX export only when users need it and the output can be tested reliably.
 7. **Job matching:** Present job-description terms as optional review prompts. Do not promise ATS scores, rankings, or interviews.
 8. **Billing:** Introduce paid plans only after the core workflow, account model, support, cancellation, and refund behavior are defined.
@@ -79,12 +83,12 @@ Do not move everything in one large rewrite. First add tests for current routes,
 
 Choose one hosting approach initially rather than building cloud infrastructure before the product needs it.
 
-## 5. Data model when server-side accounts are introduced
+## 5. Current account data and future resume storage
 
 Start with the smallest useful model:
 
-- **User:** Authentication identifier, email, password hash or trusted identity-provider reference, timestamps, and account status.
-- **Resume:** Owner ID, title, validated structured resume content, selected template, and timestamps.
+- **User (current):** SQLite stores a name, unique email, password hash (nullable for provider-only users), and creation timestamp. Optional OAuth identities store provider and provider subject. Passwords are hashed with Werkzeug; account forms use CSRF tokens.
+- **Resume (future):** Owner ID, title, validated structured resume content, selected template, and timestamps.
 - **ResumeVersion (optional):** Resume ID, content snapshot, and creation time if version history is a product requirement.
 
 Every resume read, update, delete, and export must verify ownership on the server. Define retention, deletion, and user export behavior before storing resume content. Do not put resume text, uploaded document contents, credentials, or session tokens in application logs.
@@ -136,13 +140,13 @@ factory registration, existing pages, and upload-size handling.
 - Validate print-to-PDF output in supported browsers and paper sizes.
 - Keep ATS and job-match claims transparent and modest.
 
-### Phase 4: Accounts and persistent resumes (only if required)
+### Phase 4: Persistent resumes (only if required)
 
-- Choose the authentication flow and account recovery policy.
-- Add PostgreSQL models and schema migrations.
-- Enforce per-user authorization for every resume operation.
+- Add account recovery and email-verification policy before public launch.
+- Move account storage to PostgreSQL and add schema migrations when deployment needs require it.
+- Move drafts to server storage only with explicit consent and enforce per-user authorization for every resume operation.
 - Define consent, retention, export, and deletion behavior.
-- Add integration tests for unauthorized access and ownership boundaries.
+- Add integration tests for account recovery, unauthorized access, and ownership boundaries.
 
 ### Phase 5: Production deployment and operations
 
@@ -163,4 +167,4 @@ factory registration, existing pages, and upload-size handling.
 2. **Done:** Require a stable `FLASK_SECRET_KEY` in production; keep any development fallback limited to local use.
 3. **Done:** Add tests for existing routes and file-processing failure cases before restructuring.
 4. **Done:** Refactor route registration into an app factory and blueprints, and move file processing into services without changing public route paths.
-5. Continue using local browser storage until server-side accounts and resume persistence are deliberately in scope.
+5. **Done:** Implement local email/password accounts, optional provider OAuth, and authenticated resume-builder access; continue keeping resume drafts in browser storage until sync is deliberately in scope.

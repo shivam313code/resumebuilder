@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8fc">
-  <title>Resume Template Gallery — Build Anything</title>
+  <title>Resume Template Gallery — ResumePro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 </head>
 <body class="template-picker-page">
   <header class="home-nav">
-    <a class="brand" href="/" aria-label="Build Anything home"><span class="brand-mark">B</span><span>Build Anything</span></a>
+    <a class="brand" href="/" aria-label="ResumePro home"><span class="brand-mark">R</span><span>ResumePro</span></a>
     <a class="nav-link" href="/">← All tools</a>
   </header>
 
@@ -57,7 +57,7 @@
           </div>
           <h2>{{ template.name }}</h2>
           <p>{{ template.description }}</p>
-          <a class="template-action free-action" href="{{ url_for('edit_resume', template_id=template.id) }}">Use this template <span aria-hidden="true">→</span></a>
+          <a class="template-action free-action" href="{{ url_for('main.edit_resume', template_id=template.id) }}">Use this template <span aria-hidden="true">→</span></a>
         </div>
       </article>
       {% endfor %}

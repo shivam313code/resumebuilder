@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ "Terms of Service" if page == "terms" else "Privacy Policy" }} — ResumePro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="rp-legal-page">
+  <main class="rp-legal-card">
+    <a class="rp-brand" href="{{ url_for('main.index') }}"><span class="rp-brand-mark">R</span><span>ResumePro</span></a>
+    {% if page == "terms" %}
+      <h1>Terms of Service</h1>
+      <p>ResumePro provides resume-building and document tools. You are responsible for the accuracy and rights to the content you submit. Use the service lawfully and do not upload content you are not authorized to use.</p>
+      <p>Resume drafts are currently stored in your browser. Account credentials are stored to support sign-in. Features may change as the service develops.</p>
+      <p>These terms are an initial product notice and should be reviewed by a qualified professional before public launch.</p>
+    {% else %}
+      <h1>Privacy Policy</h1>
+      <p>ResumePro stores your account name, email address, and a one-way password hash in its account database. Passwords are never stored as plain text.</p>
+      <p>Resume drafts and job-description analysis are stored in your browser's local storage and are not uploaded or synchronized to an account in this version. Uploaded files are processed to provide the requested conversion or resize.</p>
+      <p>This policy is an initial product notice and should be reviewed by a qualified professional before public launch.</p>
+    {% endif %}
+    <a class="rp-account-submit rp-legal-back" href="{{ url_for('auth.signup') }}">Back to account <span>→</span></a>
+  </main>
+</body>
+</html>

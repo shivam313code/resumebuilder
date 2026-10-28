@@ -6,13 +6,14 @@ Navigation index for the current Flask project. Verified by inspecting imports, 
 
 | Path | Purpose |
 | --- | --- |
-| `1.py` | Backward-compatible local launcher; imports and runs `application.app`. |
 | `application.py` | Compatibility module exposing `app = create_app()` for existing WSGI imports. |
 | `config.py` | Compatibility re-export of `app.config.load_config`. |
 | `wsgi.py` | WSGI import target that exposes `application.app` for Gunicorn. |
+| `RES_Builder.py` | Local launcher that constructs the application through `app.create_app()`. |
 | `app/` | Flask application package: factory, configuration, blueprints, and file-processing services. |
 | `app/config.py` | Environment-aware configuration; validates `APP_ENV`, requires production `FLASK_SECRET_KEY`, and keeps production debug disabled. |
-| `app/routes/main.py` | Homepage and resume-builder page routes. |
+| `app/auth.py` | SQLite user accounts, password hashing, CSRF-checked authentication, sessions, and optional Google/LinkedIn OAuth. |
+| `app/routes/main.py` | Homepage, protected template gallery, and protected resume editor routes. |
 | `app/routes/tools.py` | PDF-to-Word and photo-resize HTTP routes, input checks, responses, and error messaging. |
 | `app/services/pdf_service.py` | Temporary-file PDF-to-DOCX conversion. |
 | `app/services/image_service.py` | Image validation, resize, and output-format handling. |
@@ -33,12 +34,17 @@ Navigation index for the current Flask project. Verified by inspecting imports, 
 
 ## Entry points and HTTP routes
 
-`app.create_app()` constructs configured Flask instances and registers the `main` and `tools` blueprints. `application.py` preserves the existing `application:app` import; `1.py` preserves the local launch command; `wsgi.py` exposes the app to Gunicorn.
+`app.create_app()` constructs configured Flask instances and registers the `auth`, `main`, and `tools` blueprints. `application.py` preserves the existing `application:app` import; `RES_Builder.py` launches the same app factory locally; `wsgi.py` exposes the app to Gunicorn.
 
 | Route | Handler | Main relationship |
 | --- | --- | --- |
 | `GET /` | `main.index` | Renders `templates/home.html`. |
-| `GET /resume-builder` | `main.resume_builder` | Renders `templates/index.html`, which loads `static/app.js` and `static/style.css`. |
+| `GET /signup`, `GET, POST /login` | `auth.signup`, `auth.login` | Renders the shared account page; creates accounts and establishes login sessions. |
+| `POST /logout` | `auth.logout` | Clears the signed-in session after CSRF validation. |
+| `GET /auth/<provider>`, callback | `auth.oauth_login`, `auth.oauth_callback` | Optional Google/LinkedIn OAuth; enabled only when provider credentials are configured. |
+| `GET /resume-builder` | `main.resume_builder` | Requires sign-in and renders the template gallery. |
+| `GET /resume-builder/<template_id>` | `main.edit_resume` | Requires sign-in and renders the selected editor, which loads `static/app.js` and `static/style.css`. |
+| `GET /terms`, `GET /privacy` | `auth.terms`, `auth.privacy` | Renders initial account policy notices. |
 | `GET, POST /pdf-to-word` | `tools.pdf_to_word` | Renders its template on GET; validates requests and calls `pdf_service.convert_pdf_to_docx` on POST. |
 | `GET, POST /photo-resize` | `tools.photo_resize` | Renders its template on GET; validates requests and calls `image_service.resize_image` on POST. |
 | Error `413` | App-factory handler | Provides route-specific upload-size messages for the PDF and image tools. |
@@ -55,11 +61,11 @@ The tool templates submit multipart forms to the existing Flask URL paths. Uploa
 
 ## Data, configuration, and dependencies
 
-- **Data models/database:** None found. Resume and job-description drafts are held in browser `localStorage`; the server does not persist resumes.
-- **Configuration:** `app/config.py` selects development/testing/production using `APP_ENV`. Production requires `FLASK_SECRET_KEY`, disables debug, and enables secure session cookies. Development debug mode is opt-in through `FLASK_DEBUG=true`; the upload-size limit is 20 MB. Top-level `config.py` re-exports the config loader for compatibility.
-- **Direct packages:** Flask (web app), `pdf2docx` (PDF-to-DOCX conversion), and Pillow (image processing), as declared in `requirements.txt`.
+- **Data models/database:** Account names, emails, password hashes, and optional provider identities are stored in SQLite at `instance/resumebuilder.sqlite3` by default. Resume and job-description drafts remain in browser `localStorage`; the server does not persist resumes.
+- **Configuration:** `app/config.py` selects development/testing/production using `APP_ENV`. Production requires `FLASK_SECRET_KEY`, disables debug, and enables secure session cookies. Google/LinkedIn OAuth are optional via provider client environment variables. `RESUMEPRO_DATABASE` overrides the SQLite file path; upload-size limit is 20 MB.
+- **Direct packages:** Flask, Authlib, Requests, `pdf2docx`, and Pillow, as declared in `requirements.txt`.
 - **Other imports:** Python standard-library modules for I/O, logging, temporary directories, secrets, and warnings.
-- **Tests:** `tests/test_app.py` covers app-factory route registration, rendered page routes, upload-size handling, PDF upload validation and mocked conversion response, photo-resize validation/output, and environment configuration. Run with `python -m pytest`; the test cases use `unittest.TestCase`.
+- **Tests:** `tests/test_app.py` covers app-factory route registration, signup/login/logout, CSRF and input validation, protected resume routes, rendered pages, upload-size handling, PDF conversion, photo resizing, and configuration. Run with `python -m pytest`; test cases use `unittest.TestCase`.
 - **CI/lint:** `.github/workflows/ci.yml` runs `python -m ruff check .` and `python -m pytest`. Development tools are declared in `requirements-dev.txt`.
 - **Migrations:** No database migrations were found.
 
