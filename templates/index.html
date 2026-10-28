@@ -12,10 +12,10 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body class="resume-editor-page">
+<body class="resume-editor-page" data-user-id="{{ current_user.id }}" data-template-name="{{ template.name }}">
   <header class="editor-topbar">
     <a class="brand" href="/" aria-label="ResumePro home"><span class="brand-mark">R</span><span>ResumePro</span></a>
-    <a class="editor-back-link" href="{{ url_for('main.resume_builder') }}">← <span>Back to Dashboard</span></a>
+    <a class="editor-back-link" href="{{ url_for('main.dashboard') }}">← <span>Back to Dashboard</span></a>
     <nav class="editor-steps" aria-label="Resume builder steps">
       <a class="editor-step active" href="#resume-form"><span>1</span> Edit Content</a>
       <a class="editor-step" href="#customize-section"><span>2</span> Customize</a>
@@ -41,10 +41,10 @@
   <aside class="editor-sidebar" aria-label="ResumePro workspace">
     <a class="sidebar-brand" href="{{ url_for('main.index') }}"><span class="brand-mark">R</span> ResumePro</a>
     <nav class="sidebar-nav">
-      <a href="{{ url_for('main.resume_builder') }}">⌂ <span>Dashboard</span></a>
-      <a href="{{ url_for('main.resume_builder') }}">▤ <span>My Resumes</span></a>
+      <a href="{{ url_for('main.dashboard') }}">⌂ <span>Dashboard</span></a>
+      <a href="{{ url_for('main.dashboard') }}#my-resumes">▤ <span>My Resumes</span></a>
       <a class="selected" href="#resume-form">▣ <span>Resume Editor</span></a>
-      <a href="#assistant-panel">✧ <span>Writing Assistant</span></a>
+      <a href="{{ url_for('main.ai_copilot') }}">✧ <span>AI Copilot</span></a>
       <a href="{{ url_for('main.resume_builder') }}">▧ <span>Templates</span></a>
       <a href="#analysis-card">◉ <span>ATS Analysis</span></a>
       <a href="#cover-letter">✉ <span>Cover Letter</span></a>

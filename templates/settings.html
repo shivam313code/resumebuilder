@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6fc">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Settings — ResumePro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='settings.js') }}" defer></script>
+</head>
+<body class="workspace-page settings-page" data-user-id="{{ current_user.id }}" data-profile-name="{{ current_user.name }}" data-profile-email="{{ current_user.email }}">
+  <script src="{{ url_for('static', filename='workspace-preferences.js') }}"></script>
+  <aside class="workspace-sidebar">
+    <a class="workspace-brand" href="{{ url_for('main.index') }}"><span class="brand-mark">R</span><span>ResumePro</span></a>
+    <nav class="workspace-nav" aria-label="Workspace">
+      <a href="{{ url_for('main.dashboard') }}"><span>⌂</span>Dashboard</a>
+      <a href="{{ url_for('main.dashboard') }}#my-resumes"><span>▤</span>My Resumes</a>
+      <a href="{{ url_for('main.edit_resume', template_id='modern-pro') }}"><span>▣</span>Resume Editor</a>
+      <a href="{{ url_for('main.ai_copilot') }}"><span>✧</span>AI Copilot</a>
+      <a href="{{ url_for('main.ai_copilot') }}#analysis"><span>◉</span>ATS Analysis</a>
+      <a href="{{ url_for('main.resume_builder') }}"><span>▧</span>Templates</a>
+      <a href="{{ url_for('main.ai_copilot') }}?mode=cover-letter"><span>✉</span>Cover Letter</a>
+      <a href="{{ url_for('main.job_tracker') }}"><span>⌕</span>Job Tracker</a>
+      <a class="active" href="{{ url_for('main.settings') }}"><span>⚙</span>Settings</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-nav-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span>↗</span>Sign out</button></form>
+    </nav>
+    <section class="workspace-plan">
+      <span class="plan-crown">♛</span><strong>Free Plan</strong>
+      <p>Your profile and preferences stay in this browser.</p>
+      <a href="{{ url_for('main.job_tracker') }}">Open Job Tracker <span>→</span></a>
+    </section>
+  </aside>
+
+  <div class="workspace-shell">
+    <header class="workspace-topbar">
+      <a class="workspace-mobile-brand" href="{{ url_for('main.dashboard') }}"><span class="brand-mark">R</span> ResumePro</a>
+      <label class="workspace-search"><span aria-hidden="true">⌕</span><input id="settings-search" type="search" placeholder="Search settings, templates, or help…" aria-label="Search settings"></label>
+      <div class="workspace-top-actions">
+        <span class="credit-pill"><span>⚙</span> <strong>Settings</strong></span>
+        <span class="top-avatar" id="settings-top-avatar" aria-hidden="true">{{ current_user.name[:1]|upper }}</span>
+        <span class="top-user"><strong id="settings-top-name">{{ current_user.name }}</strong><small>ResumePro account</small></span>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" aria-label="Sign out">↗</button></form>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="workspace-flash-messages" role="status" aria-live="polite">
+          {% for category, message in messages %}<p class="flash-{{ category }}">{{ message }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="settings-content">
+      <section class="settings-page-heading">
+        <div><span class="hero-eyebrow">YOUR ACCOUNT</span><h1>Settings</h1><p>Manage your profile, preferences, and account security.</p></div>
+        <div class="settings-hero-art" aria-hidden="true"><span>⚙</span><i>R</i><b>✦</b></div>
+      </section>
+
+      <div class="settings-layout">
+        <nav class="settings-menu settings-card" aria-label="Settings sections">
+          <h2>Settings Menu</h2>
+          <a class="active" href="#profile"><span>▣</span><span><strong>Profile Information</strong><small>Personal and professional info</small></span></a>
+          <a href="#security"><span>⛨</span><span><strong>Account &amp; Security</strong><small>Password and account access</small></span></a>
+          <a href="#preferences"><span>⚙</span><span><strong>Preferences</strong><small>Theme and editor settings</small></span></a>
+          <a href="#content-settings"><span>✧</span><span><strong>AI &amp; Content Settings</strong><small>Local writing preferences</small></span></a>
+          <a href="#notifications"><span>♧</span><span><strong>Notifications</strong><small>Email and in-app notices</small></span></a>
+          <a href="#billing"><span>▣</span><span><strong>Billing &amp; Subscription</strong><small>Plan information</small></span></a>
+          <a href="#integrations"><span>♧</span><span><strong>Integrations</strong><small>Connected services</small></span></a>
+          <a href="#privacy"><span>⌘</span><span><strong>Data &amp; Privacy</strong><small>Manage local data</small></span></a>
+          <a href="#support"><span>ⓘ</span><span><strong>Help &amp; Support</strong><small>Find help and contact</small></span></a>
+        </nav>
+
+        <div class="settings-main-column">
+          <section class="settings-card settings-profile-card" id="profile">
+            <div class="settings-card-heading"><span class="settings-icon">▣</span><div><h2>Profile Information</h2><p>Personal details and professional information</p></div><span class="settings-plan-badge">Free Plan</span></div>
+            <form id="profile-form" class="settings-profile-form">
+              <div class="settings-profile-overview">
+                <div class="settings-avatar-wrap"><img id="settings-avatar-preview" alt="Profile photo" hidden><span id="settings-avatar-fallback">{{ current_user.name[:1]|upper }}</span><label for="settings-avatar-file" class="settings-avatar-edit" aria-label="Upload profile photo">✎</label><input id="settings-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>
+                <div><strong id="settings-profile-display-name">{{ current_user.name }}</strong><p id="settings-profile-title">Add a professional title</p><span class="profile-email"><span>✉</span> {{ current_user.email }}</span></div>
+                <span class="profile-info-badge">Email verified for sign-in</span>
+              </div>
+              <div class="settings-fields-grid">
+                <label class="settings-field">Full Name<input id="profile-name" name="name" maxlength="100" required value="{{ current_user.name }}"></label>
+                <label class="settings-field">Professional Title<input id="profile-title" maxlength="120" placeholder="e.g. Product Designer"></label>
+                <label class="settings-field">Email Address<input id="profile-email" type="email" value="{{ current_user.email }}" disabled><small>Sign-in email cannot be changed here.</small></label>
+                <label class="settings-field">Phone Number<input id="profile-phone" type="tel" maxlength="40" placeholder="+1 555 123 4567"></label>
+                <label class="settings-field">Location<input id="profile-location" maxlength="120" placeholder="City, Country"></label>
+                <label class="settings-field">LinkedIn Profile<input id="profile-linkedin" type="url" maxlength="500" placeholder="https://linkedin.com/in/your-profile"></label>
+                <label class="settings-field settings-field-wide">Professional Bio<textarea id="profile-bio" maxlength="500" rows="4" placeholder="A short introduction about your experience and strengths."></textarea><small><span id="profile-bio-count">0</span>/500</small></label>
+              </div>
+              <div class="settings-form-footer"><p id="settings-feedback" role="status" aria-live="polite"></p><button class="workspace-primary-button" type="submit">Save Profile Changes</button></div>
+            </form>
+          </section>
+
+          <section class="settings-card" id="security">
+            <div class="settings-card-heading"><span class="settings-icon">♙</span><div><h2>Account &amp; Security</h2><p>Update your password and account access</p></div></div>
+            <form class="settings-password-form" method="post" action="{{ url_for('auth.update_password') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label class="settings-field">Current Password<input name="current_password" type="password" autocomplete="current-password" placeholder="Required if a password is already set"></label>
+              <label class="settings-field">New Password<input name="new_password" type="password" minlength="12" maxlength="256" autocomplete="new-password" required placeholder="At least 12 characters"></label>
+              <label class="settings-field">Confirm New Password<input name="confirm_password" type="password" minlength="12" maxlength="256" autocomplete="new-password" required placeholder="Enter the new password again"></label>
+              <button class="small-outline-button" type="submit">Update Password</button>
+            </form>
+            <div class="settings-security-note"><strong>Session security</strong><span>You are signed in to this browser. Sign out from the sidebar to end this session.</span><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="small-outline-button" type="submit">Sign Out</button></form></div>
+          </section>
+
+          <section class="settings-card" id="preferences">
+            <div class="settings-card-heading"><span class="settings-icon">⚙</span><div><h2>Preferences</h2><p>Personalize your workspace and resume editor</p></div></div>
+            <div class="settings-fields-grid">
+              <label class="settings-field">Language<select id="pref-language" disabled><option>English</option></select><small>English is currently the available language.</small></label>
+              <label class="settings-field">Workspace Theme<select id="pref-theme"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></label>
+              <label class="settings-field">Default Resume Template<select id="pref-template"><option value="modern-pro">Modern Pro</option><option value="timeless">Timeless</option><option value="plain">Plain</option><option value="blogger">Blogger</option><option value="pacific">Pacific</option><option value="general-ats">General ATS</option></select></label>
+              <label class="settings-field">Resume Font Style<select id="pref-font"><option value="modern">Modern</option><option value="classic">Classic</option><option value="compact">Compact</option></select></label>
+            </div>
+            <div class="settings-form-footer"><p id="preferences-feedback" role="status" aria-live="polite"></p><a id="open-default-template" class="workspace-primary-button" href="{{ url_for('main.edit_resume', template_id='modern-pro') }}">Open Default Template →</a></div>
+          </section>
+
+          <section class="settings-card" id="content-settings">
+            <div class="settings-card-heading"><span class="settings-icon">✧</span><div><h2>AI &amp; Content Settings</h2><p>Choose your writing style for local Copilot suggestions</p></div></div>
+            <label class="settings-field">Writing tone<select id="pref-tone"><option value="professional">Professional</option><option value="confident">Confident</option><option value="concise">Concise</option></select></label>
+            <p class="settings-honesty-note">Copilot suggestions are prepared in this browser from the text you provide. They do not use an AI service or invent work history.</p>
+            <button id="save-content-settings" type="button" class="small-outline-button">Save Writing Preference</button>
+          </section>
+
+          <section class="settings-card" id="notifications">
+            <div class="settings-card-heading"><span class="settings-icon">♧</span><div><h2>Notifications</h2><p>Control reminders on this device</p></div></div>
+            <label class="settings-toggle-row"><span><strong>Interview reminders</strong><small>Show upcoming interview reminders in your job tracker.</small></span><input id="notify-interviews" type="checkbox" role="switch"></label>
+            <label class="settings-toggle-row"><span><strong>Application follow-up reminders</strong><small>Show follow-up dates in your application list.</small></span><input id="notify-followups" type="checkbox" role="switch"></label>
+            <label class="settings-toggle-row"><span><strong>Resume tips</strong><small>Show local resume readiness suggestions.</small></span><input id="notify-resume-tips" type="checkbox" role="switch"></label>
+            <p class="settings-honesty-note">Email and push notifications are not configured. These preferences affect only this browser.</p>
+          </section>
+
+          <section class="settings-card" id="billing">
+            <div class="settings-card-heading"><span class="settings-icon">▣</span><div><h2>Billing &amp; Subscription</h2><p>Your current account plan</p></div></div>
+            <div class="settings-plan-panel"><div><strong>Free Plan</strong><small>No paid subscription is active.</small></div><span>Active</span></div>
+            <p class="settings-honesty-note">Paid plans and billing management are not available in this app yet.</p>
+            <a class="small-outline-button settings-inline-link" href="{{ url_for('main.resume_builder') }}">Browse available templates</a>
+          </section>
+
+          <section class="settings-card" id="integrations">
+            <div class="settings-card-heading"><span class="settings-icon">♧</span><div><h2>Integrations</h2><p>Connect external career tools</p></div></div>
+            <p class="settings-honesty-note">No external integrations are connected. Google and LinkedIn sign-in can be configured by the site administrator; job boards and social profile syncing are not currently available.</p>
+            <a class="small-outline-button settings-inline-link" href="{{ url_for('main.job_tracker') }}">Manage applications locally</a>
+          </section>
+
+          <section class="settings-card" id="privacy">
+            <div class="settings-card-heading"><span class="settings-icon">⌘</span><div><h2>Data &amp; Privacy</h2><p>Export or remove data saved in this browser</p></div></div>
+            <p class="settings-honesty-note">Profile details, preferences, and job applications are saved in this browser. Your account name and sign-in email are stored by ResumePro.</p>
+            <div class="settings-privacy-actions"><button id="export-local-data" type="button" class="small-outline-button">Download Local Data</button><button id="clear-local-data" type="button" class="danger-outline-button">Clear Local Profile &amp; Preferences</button></div>
+            <p id="privacy-feedback" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="settings-card" id="support">
+            <div class="settings-card-heading"><span class="settings-icon">ⓘ</span><div><h2>Help &amp; Support</h2><p>Get help using your ResumePro workspace</p></div></div>
+            <p class="settings-honesty-note">Need help with your resume? Open the editor or review the local Copilot tools.</p>
+            <div class="settings-privacy-actions"><a class="small-outline-button settings-inline-link" href="{{ url_for('main.edit_resume', template_id='modern-pro') }}">Open Resume Editor</a><a class="small-outline-button settings-inline-link" href="{{ url_for('main.ai_copilot') }}">Open AI Copilot</a></div>
+          </section>
+        </div>
+
+        <aside class="settings-right-column">
+          <section class="settings-card settings-completion-card"><div class="settings-card-heading"><span class="settings-icon">✧</span><div><h2>Profile Completion</h2><p>Based on your saved profile and resume</p></div></div><div class="settings-completion-gauge" id="settings-completion-gauge"><strong id="settings-completion-value">0%</strong><span>Complete</span></div><ul id="settings-completion-list" class="settings-check-list"></ul><a href="#profile" class="settings-side-link">Complete your profile →</a></section>
+          <section class="settings-card settings-visibility-card"><div class="settings-card-heading"><span class="settings-icon">◉</span><div><h2>Resume Visibility</h2><p>Control public discoverability</p></div></div><label class="settings-toggle-row"><span><strong>Make my profile visible</strong><small>This app does not publish profiles to recruiters.</small></span><input id="profile-visibility" type="checkbox" role="switch"></label></section>
+          <section class="settings-card"><div class="settings-card-heading"><span class="settings-icon">♧</span><div><h2>Social Links</h2><p>Saved with your local profile</p></div></div><label class="settings-field">GitHub<input id="profile-github" type="url" maxlength="500" placeholder="https://github.com/username"></label><label class="settings-field">Portfolio<input id="profile-portfolio" type="url" maxlength="500" placeholder="https://your-site.example"></label></section>
+          <section class="settings-card settings-quote-card"><span>“</span><p>Keep your profile updated to make resume editing and job tracking easier.</p><a href="{{ url_for('main.job_tracker') }}">Track applications →</a></section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -86,6 +86,106 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Edit your resume", response.data)
 
+    def test_dashboard_and_ai_copilot_are_authenticated_and_linked(self):
+        for path in ("/dashboard", "/ai-copilot", "/job-tracker", "/settings"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.headers["Location"], f"/login?next={path}")
+
+        self._signup()
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn(b"Welcome back", dashboard.data)
+        self.assertIn(b'href="/ai-copilot"', dashboard.data)
+        self.assertIn(b'href="/resume-builder/modern-pro"', dashboard.data)
+        self.assertIn(b'id="resume-list"', dashboard.data)
+
+        copilot = self.client.get("/ai-copilot")
+        self.assertEqual(copilot.status_code, 200)
+        self.assertIn(b"Your AI Resume Copilot", copilot.data)
+        self.assertIn(b'data-mode="tailor"', copilot.data)
+        self.assertIn(b'id="suggestion-list"', copilot.data)
+        self.assertIn(b'id="copilot-checks"', copilot.data)
+
+    def test_job_tracker_and_settings_render_functional_controls(self):
+        self._signup()
+
+        tracker = self.client.get("/job-tracker")
+        self.assertEqual(tracker.status_code, 200)
+        self.assertIn(b"Track Your", tracker.data)
+        self.assertIn(b'id="job-table-body"', tracker.data)
+        self.assertIn(b'id="job-dialog"', tracker.data)
+        self.assertIn(b'href="/settings"', tracker.data)
+
+        settings = self.client.get("/settings")
+        self.assertEqual(settings.status_code, 200)
+        self.assertIn(b"Profile Information", settings.data)
+        self.assertIn(b'id="profile-form"', settings.data)
+        self.assertIn(b'action="/account/password"', settings.data)
+        self.assertIn(b'href="/job-tracker"', settings.data)
+
+    def test_settings_profile_update_is_authenticated_and_csrf_protected(self):
+        self.assertEqual(
+            self.client.post("/account/profile", json={"name": "New Name"}).status_code,
+            401,
+        )
+        self._signup()
+
+        response = self.client.post(
+            "/account/profile",
+            json={"name": "Avery Updated"},
+            headers={"X-CSRF-Token": self._session_csrf_token()},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"name": "Avery Updated"})
+        self.assertIn(b"Avery Updated", self.client.get("/settings").data)
+        self.assertEqual(
+            self.client.post(
+                "/account/profile",
+                json={"name": "Bad Token"},
+                headers={"X-CSRF-Token": "invalid"},
+            ).status_code,
+            400,
+        )
+
+    def test_password_change_requires_valid_current_password_and_csrf(self):
+        self._signup()
+        token = self._session_csrf_token()
+        response = self.client.post(
+            "/account/password",
+            data={
+                "csrf_token": token,
+                "current_password": "incorrect current password",
+                "new_password": "updated password that is long",
+                "confirm_password": "updated password that is long",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("Your current password is incorrect.", self.client.get("/settings").get_data(as_text=True))
+
+        response = self.client.post(
+            "/account/password",
+            data={
+                "csrf_token": token,
+                "current_password": "correct horse battery staple",
+                "new_password": "updated password that is long",
+                "confirm_password": "updated password that is long",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self._logout()
+        login_page = self.client.get("/login")
+        response = self.client.post(
+            "/login",
+            data={
+                "csrf_token": self._csrf_token(login_page),
+                "email": "avery@example.com",
+                "password": "updated password that is long",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
     def test_resume_editor_renders_customization_and_export_controls(self):
         self._signup()
 
@@ -371,8 +471,8 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertIn(b"Create a Job-Winning", response.data)
         self.assertIn(b"AI Tools", response.data)
         self.assertIn(b"ATS Score", response.data)
-        self.assertIn(b'href="/signup?next=/resume-builder/modern-pro"', response.data)
-        self.assertIn(b'href="/login?next=/resume-builder/modern-pro"', response.data)
+        self.assertIn(b'href="/signup?next=/dashboard"', response.data)
+        self.assertIn(b'href="/login?next=/dashboard"', response.data)
         self.assertIn(b'href="/resume-builder/modern-pro"', response.data)
         self.assertIn(b'href="/resume-builder"', response.data)
         self.assertIn(b'href="/pdf-to-word"', response.data)

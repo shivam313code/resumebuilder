@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6fc">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>AI Copilot — ResumePro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='copilot.js') }}" defer></script>
+</head>
+<body class="workspace-page copilot-page" data-user-id="{{ current_user.id }}">
+  <script src="{{ url_for('static', filename='workspace-preferences.js') }}"></script>
+  <aside class="workspace-sidebar">
+    <a class="workspace-brand" href="{{ url_for('main.index') }}"><span class="brand-mark">R</span><span>ResumePro</span></a>
+    <nav class="workspace-nav" aria-label="Workspace">
+      <a href="{{ url_for('main.dashboard') }}"><span>⌂</span>Dashboard</a>
+      <a href="{{ url_for('main.dashboard') }}#my-resumes"><span>▤</span>My Resumes</a>
+      <a href="{{ url_for('main.edit_resume', template_id='modern-pro') }}"><span>▣</span>Resume Editor</a>
+      <a class="active" href="{{ url_for('main.ai_copilot') }}"><span>✧</span>AI Copilot</a>
+      <a href="#analysis"><span>◉</span>ATS Analysis</a>
+      <a href="{{ url_for('main.resume_builder') }}"><span>▧</span>Templates</a>
+      <a href="{{ url_for('main.ai_copilot') }}?mode=cover-letter"><span>✉</span>Cover Letter</a>
+      <a href="{{ url_for('main.job_tracker') }}"><span>⌕</span>Job Tracker</a>
+      <a href="{{ url_for('main.settings') }}"><span>⚙</span>Settings</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-nav-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span>↗</span>Sign out</button></form>
+    </nav>
+    <section class="workspace-plan">
+      <span class="plan-crown">♛</span><strong>Free Plan</strong>
+      <p>Suggestions are created from your resume text in this browser.</p>
+      <a href="{{ url_for('main.dashboard') }}">Back to Dashboard <span>→</span></a>
+    </section>
+  </aside>
+
+  <div class="workspace-shell">
+    <header class="workspace-topbar">
+      <a class="workspace-mobile-brand" href="{{ url_for('main.dashboard') }}"><span class="brand-mark">R</span> ResumePro</a>
+      <label class="workspace-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Search for templates, tools…" aria-label="Search templates and tools"></label>
+      <div class="workspace-top-actions">
+        <span class="credit-pill"><span>ϟ</span> <strong>AI Copilot</strong></span>
+        <span class="top-avatar" aria-hidden="true">{{ current_user.name[:1]|upper }}</span>
+        <span class="top-user"><strong>{{ current_user.name }}</strong><small>ResumePro account</small></span>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" aria-label="Sign out">↗</button></form>
+      </div>
+    </header>
+
+    <main class="copilot-content">
+      <section class="copilot-hero">
+        <div><span class="hero-eyebrow">✦ YOUR PERSONAL RESUME WORKSPACE</span><h1>Your AI Resume Copilot</h1><p>Get thoughtful suggestions based on your resume. Review every edit before applying it.</p></div>
+        <div class="copilot-hero-art" aria-hidden="true"><span>✦</span><i>AI</i><b>✧</b></div>
+        <a class="demo-card" href="#copilot-tools"><span class="demo-play">▶</span><span><strong>How it works</strong><small>Choose a tool, review suggestions, and apply what fits.</small><em>Explore Copilot tools →</em></span></a>
+      </section>
+
+      <nav class="copilot-tool-tabs" id="copilot-tools" aria-label="Copilot tools">
+        <button class="active" type="button" data-mode="improve">✎ Improve Content</button>
+        <button type="button" data-mode="generate">✧ Generate Section</button>
+        <button type="button" data-mode="tailor">♧ Tailor for Job</button>
+        <button type="button" data-mode="grammar">✓ Fix Grammar</button>
+        <button type="button" data-mode="ats">◉ Optimize for ATS</button>
+        <button type="button" data-mode="shorten">↔ Rewrite &amp; Shorten</button>
+      </nav>
+
+      <div class="copilot-columns">
+        <section class="copilot-card copilot-input-card">
+          <div class="copilot-card-heading"><span class="copilot-icon">✧</span><div><h2 id="copilot-input-title">Improve your content</h2><p>Start with your own resume details.</p></div></div>
+          <label class="copilot-field">Select Section
+            <select id="copilot-section">
+              <option value="experience">Work Experience</option>
+              <option value="summary">Professional Summary</option>
+              <option value="skills">Skills</option>
+              <option value="projects">Projects</option>
+              <option value="education">Education</option>
+            </select>
+          </label>
+          <label class="copilot-field">Your Content
+            <textarea id="copilot-content" maxlength="4000" rows="5" placeholder="Your selected resume section will appear here. You can edit it before generating suggestions."></textarea>
+          </label>
+          <div class="copilot-char-count"><span id="copilot-count">0</span>/4000</div>
+          <label class="copilot-field">Job Role / Target Position <span class="field-optional">(Optional)</span>
+            <input id="copilot-role" type="text" maxlength="120" placeholder="e.g. Data Scientist, ML Engineer">
+          </label>
+          <label class="copilot-field copilot-job-description" id="copilot-job-description-field" hidden>Job Description <span class="field-optional">(Optional)</span>
+            <textarea id="copilot-job-description" maxlength="5000" rows="3" placeholder="Paste a job description to compare relevant terms."></textarea>
+          </label>
+          <fieldset class="focus-areas"><legend>Key Focus Areas</legend>
+            <label><input type="checkbox" value="clarity" checked><span>Clarity</span></label>
+            <label><input type="checkbox" value="impact"><span>Impact</span></label>
+            <label><input type="checkbox" value="concise"><span>Concise</span></label>
+            <label><input type="checkbox" value="technical"><span>Technical Skills</span></label>
+          </fieldset>
+          <button class="workspace-primary-button copilot-generate-button" id="copilot-generate" type="button">✦ Get Suggestions</button>
+          <p class="copilot-privacy-note">Suggestions use only text you enter and stay in this browser. No career details or metrics are invented.</p>
+          <p class="copilot-feedback" id="copilot-feedback" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="copilot-card copilot-suggestions-card">
+          <div class="copilot-card-heading"><span class="copilot-icon">✧</span><div><h2>Suggestions</h2><p id="suggestion-subtitle">Review each variation before using it.</p></div><span class="suggestion-count" id="suggestion-count">0 Variations</span></div>
+          <div id="suggestion-list" class="suggestion-list" aria-live="polite">
+            <div class="suggestion-empty"><span>✧</span><strong>Your suggestions will appear here</strong><p>Choose a section and select “Get Suggestions” to begin.</p></div>
+          </div>
+        </section>
+
+        <aside class="copilot-insights-column">
+          <section class="copilot-card ats-card" id="analysis">
+            <div class="copilot-card-heading"><span class="copilot-icon">◉</span><div><h2>Resume Readiness</h2><p>Local content checklist</p></div><button id="refresh-analysis" class="small-outline-button" type="button">Refresh</button></div>
+            <div class="readiness-summary">
+              <div class="copilot-gauge" id="copilot-gauge" style="--gauge-value:0"><div><strong id="copilot-score">—</strong><small>/ 100</small></div></div>
+              <div><strong id="copilot-score-label">Review your resume</strong><p id="copilot-score-detail">Open or edit your local resume draft to see checks.</p></div>
+            </div>
+            <ul id="copilot-checks" class="copilot-checks"></ul>
+            <a class="copilot-text-link" href="{{ url_for('main.edit_resume', template_id='modern-pro') }}">Edit resume details →</a>
+          </section>
+
+          <section class="copilot-card keyword-card">
+            <div class="copilot-card-heading"><span class="copilot-icon">⌕</span><div><h2>Skills in Your Resume</h2><p>From your saved resume draft</p></div></div>
+            <div id="copilot-keywords" class="copilot-keyword-list"><span class="keyword-empty">Add skills in your resume to see them here.</span></div>
+            <p class="keyword-honesty-note">Only include skills you can support with real experience.</p>
+          </section>
+
+          <section class="copilot-card improvement-card">
+            <div class="copilot-card-heading"><span class="copilot-icon">✦</span><div><h2>Improvement Tips</h2><p>Based on your saved content</p></div></div>
+            <ul id="copilot-tips" class="copilot-tips"><li>Open your resume draft to get tailored content tips.</li></ul>
+          </section>
+        </aside>
+      </div>
+
+      <section class="copilot-more-tools">
+        <div class="dashboard-section-heading"><div><h2>More Copilot Tools</h2><p>Choose another way to prepare for your next opportunity.</p></div></div>
+        <div class="more-tools-grid">
+          <button type="button" data-mode="summary"><span class="quick-tool-icon stat-purple">✧</span><strong>Professional Summary</strong><small>Refine your introduction</small></button>
+          <button type="button" data-mode="skills"><span class="quick-tool-icon stat-violet">◇</span><strong>Skills Suggestions</strong><small>Review your existing skills</small></button>
+          <button type="button" data-mode="cover-letter"><span class="quick-tool-icon stat-teal">✉</span><strong>Cover Letter</strong><small>Draft from your resume details</small></button>
+          <button type="button" data-mode="interview"><span class="quick-tool-icon stat-blue">▣</span><strong>Interview Prep</strong><small>Turn experience into prompts</small></button>
+          <button type="button" data-mode="job-match"><span class="quick-tool-icon stat-orange">⌕</span><strong>Job Match</strong><small>Compare skills and role terms</small></button>
+          <a href="{{ url_for('main.dashboard') }}"><span class="quick-tool-icon stat-violet">⌂</span><strong>Career Dashboard</strong><small>Return to your workspace</small></a>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

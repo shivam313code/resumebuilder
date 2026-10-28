@@ -409,7 +409,9 @@ function saveDraft() {
       data: readForm(),
       entries,
       jobDescription: document.querySelector("#job-description").value,
-      appearance
+      appearance,
+      templateName: document.body.dataset.templateName || "Modern Pro",
+      updatedAt: new Date().toISOString()
     }));
     status.textContent = "All changes saved";
   } catch (error) {
@@ -1085,6 +1087,17 @@ function analyzeResume() {
 
 function refreshAnalysisIfVisible() {
   if (!document.querySelector("#analysis-results").hidden) analyzeResume();
+}
+
+try {
+  const userId = document.body.dataset.userId;
+  const savedSettings = userId ? localStorage.getItem(`forma-settings-${userId}`) : null;
+  const preferences = savedSettings ? JSON.parse(savedSettings).preferences : null;
+  if (["modern", "classic", "compact"].includes(preferences?.font)) {
+    appearance.font = preferences.font;
+  }
+} catch (error) {
+  console.error("Unable to load saved editor preferences.", error);
 }
 
 loadDraft();

@@ -111,6 +111,30 @@ def index():
     return render_template("home.html")
 
 
+@main_blueprint.get("/dashboard")
+@login_required
+def dashboard():
+    return render_template("dashboard.html")
+
+
+@main_blueprint.get("/ai-copilot")
+@login_required
+def ai_copilot():
+    return render_template("ai_copilot.html")
+
+
+@main_blueprint.get("/job-tracker")
+@login_required
+def job_tracker():
+    return render_template("job_tracker.html")
+
+
+@main_blueprint.get("/settings")
+@login_required
+def settings():
+    return render_template("settings.html")
+
+
 @main_blueprint.get("/resume-builder")
 @login_required
 def resume_builder():

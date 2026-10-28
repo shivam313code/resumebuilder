@@ -102,10 +102,40 @@ reformat or lightly polish user-provided text; cover-letter drafts use only
 resume content and should be reviewed before use. This is not a generative AI
 service. Add suggested terms only when they accurately describe your experience.
 
+## Dashboard and AI Copilot
+
+After signing in, use `/dashboard` for the workspace overview and `/ai-copilot`
+to review local writing suggestions, resume-readiness checks, and job-description
+keyword overlap. The dashboard and Copilot read the current resume draft from
+this browser; they do not sync drafts between devices. Suggestions are generated
+in the browser from text you provide, do not call an AI service, and must be
+reviewed before applying. Cover-letter drafts and interview practice notes remain
+in browser storage as well.
+
+## Job Tracker and Settings
+
+Signed-in users can open `/job-tracker` to add, edit, search, filter, and remove
+job applications, update application status, and review dated next steps in the
+calendar. Application records are stored in browser local storage and scoped to
+the signed-in account on that device; they are not synchronized to the server.
+The tracker starts empty rather than displaying example applications.
+
+The `/settings` page updates the account name and password, and saves optional
+profile details, appearance preferences, reminders, and visibility preferences
+in the browser. The sign-in email cannot be changed there. Password changes are
+validated against the current account password (OAuth-only accounts may set
+their first password). Profile visibility is only a local preference; the app
+does not publish public recruiter profiles. Paid billing, email/push
+notifications, external job-board integrations, and language translations are
+not configured. Local profile and job data can be exported or cleared from
+Settings.
+
 ## Accounts and sign-in
 
 Email/password registration and login are available at `/signup` and `/login`.
-New accounts are signed in immediately and sent to the resume template gallery.
+New accounts are signed in immediately. Homepage account links open the
+dashboard; choosing a template remains available from the dashboard or at
+`/resume-builder`.
 Account records are stored in `instance/resumebuilder.sqlite3` (override the
 path with `RESUMEPRO_DATABASE`). Passwords are stored as Werkzeug password
 hashes. Resume drafts and optional job descriptions remain in browser local

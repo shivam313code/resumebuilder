@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6fc">
+  <title>Dashboard — ResumePro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='workspace.js') }}" defer></script>
+</head>
+<body class="workspace-page dashboard-page" data-user-id="{{ current_user.id }}">
+  <script src="{{ url_for('static', filename='workspace-preferences.js') }}"></script>
+  <aside class="workspace-sidebar">
+    <a class="workspace-brand" href="{{ url_for('main.index') }}"><span class="brand-mark">R</span><span>ResumePro</span></a>
+    <nav class="workspace-nav" aria-label="Workspace">
+      <a class="active" href="{{ url_for('main.dashboard') }}"><span>⌂</span>Dashboard</a>
+      <a href="#my-resumes"><span>▤</span>My Resumes</a>
+      <a href="{{ url_for('main.edit_resume', template_id='modern-pro') }}"><span>▣</span>Resume Editor</a>
+      <a href="{{ url_for('main.ai_copilot') }}"><span>✧</span>AI Copilot</a>
+      <a href="{{ url_for('main.ai_copilot') }}#analysis"><span>◉</span>ATS Analysis</a>
+      <a href="{{ url_for('main.resume_builder') }}"><span>▧</span>Templates</a>
+      <a href="{{ url_for('main.ai_copilot') }}?mode=cover-letter"><span>✉</span>Cover Letter</a>
+      <a href="{{ url_for('main.job_tracker') }}"><span>⌕</span>Job Tracker</a>
+      <a href="{{ url_for('main.settings') }}"><span>⚙</span>Settings</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-nav-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span>↗</span>Sign out</button></form>
+    </nav>
+    <section class="workspace-plan">
+      <span class="plan-crown">♛</span><strong>Free Plan</strong>
+      <p>Your resume draft stays private in this browser.</p>
+      <a href="{{ url_for('main.ai_copilot') }}">Explore AI Copilot <span>→</span></a>
+    </section>
+  </aside>
+
+  <div class="workspace-shell">
+    <header class="workspace-topbar">
+      <a class="workspace-mobile-brand" href="{{ url_for('main.dashboard') }}"><span class="brand-mark">R</span> ResumePro</a>
+      <label class="workspace-search"><span aria-hidden="true">⌕</span><input id="dashboard-search" type="search" placeholder="Search resumes, templates, or tools…" aria-label="Search resumes, templates, or tools"></label>
+      <div class="workspace-top-actions">
+        <span class="credit-pill"><span>ϟ</span> <strong>AI Copilot</strong></span>
+        <span class="top-avatar" aria-hidden="true">{{ current_user.name[:1]|upper }}</span>
+        <span class="top-user"><strong>{{ current_user.name }}</strong><small>ResumePro account</small></span>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" aria-label="Sign out">↗</button></form>
+      </div>
+    </header>
+
+    <main class="dashboard-content">
+      <div class="dashboard-main-column">
+        <section class="dashboard-hero">
+          <div class="dashboard-hero-copy">
+            <span class="hero-eyebrow">YOUR CAREER WORKSPACE</span>
+            <h1>Welcome back,<br><strong>{{ current_user.name }}</strong> <span aria-hidden="true">✦</span></h1>
+            <p>Keep building your next opportunity with your resume and career tools.</p>
+            <div class="hero-actions">
+              <a class="workspace-primary-button" href="{{ url_for('main.edit_resume', template_id='modern-pro') }}">＋ Create New Resume <span>→</span></a>
+              <a class="workspace-ghost-button" href="{{ url_for('main.resume_builder') }}">▦ Explore Templates</a>
+            </div>
+          </div>
+          <div class="dashboard-hero-art" aria-hidden="true">
+            <span class="hero-orbit orbit-one"></span><span class="hero-orbit orbit-two"></span>
+            <span class="hero-float float-one">✦ AI powered</span><span class="hero-float float-two">↗ Next opportunity</span>
+            <span class="hero-bot">✦</span><span class="hero-doc">R<br><i>━━━━</i><i>━━━━</i><i>━━━</i></span>
+          </div>
+        </section>
+
+        <section class="dashboard-stats" aria-label="Resume activity">
+          <article class="dashboard-stat"><span class="stat-icon stat-violet">▤</span><div><strong id="stat-resumes">0</strong><small>Total Resumes</small></div></article>
+          <article class="dashboard-stat"><span class="stat-icon stat-purple">✦</span><div><strong id="stat-generations">0</strong><small>Copilot Suggestions</small></div></article>
+          <article class="dashboard-stat"><span class="stat-icon stat-blue">◉</span><div><strong id="stat-readiness">—</strong><small>Resume Readiness</small></div></article>
+          <article class="dashboard-stat"><span class="stat-icon stat-teal">▦</span><div><strong id="stat-template">—</strong><small>Current Template</small></div></article>
+        </section>
+
+        <section class="dashboard-resumes-card" id="my-resumes">
+          <div class="dashboard-section-heading">
+            <div><h2>My Resumes</h2><p>Continue working on the draft saved in this browser.</p></div>
+            <label class="resume-search"><span>⌕</span><input id="resume-search" type="search" placeholder="Search resumes…" aria-label="Search resumes"></label>
+            <a class="workspace-primary-button compact-button" href="{{ url_for('main.edit_resume', template_id='modern-pro') }}">＋ Create New</a>
+          </div>
+          <div id="resume-list" class="resume-dashboard-grid" aria-live="polite"></div>
+          <p id="resume-empty-state" class="workspace-empty-state" hidden>Your browser has no saved resume draft yet. Create one to get started; your draft remains on this device.</p>
+          <p id="resume-search-empty" class="workspace-empty-state" hidden>No saved resume matches that search.</p>
+        </section>
+
+        <section class="dashboard-quick-tools">
+          <div class="dashboard-section-heading"><div><h2>Quick Tools</h2><p>Make progress on the next step in your job search.</p></div></div>
+          <div class="quick-tools-grid">
+            <a href="{{ url_for('main.ai_copilot') }}?mode=cover-letter"><span class="quick-tool-icon stat-purple">✉</span><strong>AI Cover Letter</strong><small>Draft a letter from your resume</small><i>Open Copilot →</i></a>
+            <a href="{{ url_for('main.ai_copilot') }}?mode=interview"><span class="quick-tool-icon stat-teal">▣</span><strong>Interview Prep</strong><small>Practice role-focused responses</small><i>Open Copilot →</i></a>
+            <a href="{{ url_for('main.ai_copilot') }}?mode=job-match"><span class="quick-tool-icon stat-blue">⌕</span><strong>Job Match</strong><small>Compare your skills to a role</small><i>Check your match →</i></a>
+            <a href="{{ url_for('main.job_tracker') }}"><span class="quick-tool-icon stat-teal">▣</span><strong>Job Tracker</strong><small>Organize applications and interviews</small><i>Track applications →</i></a>
+            <a href="{{ url_for('main.resume_builder') }}"><span class="quick-tool-icon stat-violet">▦</span><strong>Explore Templates</strong><small>Choose a layout for your resume</small><i>View templates →</i></a>
+          </div>
+        </section>
+      </div>
+
+      <aside class="dashboard-right-column">
+        <section class="dashboard-side-card progress-side-card">
+          <div class="side-card-heading"><h2>Your Progress</h2><a href="{{ url_for('main.edit_resume', template_id='modern-pro') }}" aria-label="Continue editing">→</a></div>
+          <div class="progress-gauge" id="dashboard-gauge" style="--gauge-value:0"><div><strong id="dashboard-gauge-value">0%</strong></div></div>
+          <strong class="progress-caption">Resume readiness</strong>
+          <p class="side-card-note">A local content checklist, not an employer ATS score.</p>
+          <ul class="progress-check-list" id="progress-check-list"></ul>
+        </section>
+
+        <section class="dashboard-side-card copilot-teaser">
+          <div class="side-card-heading"><span class="side-heading-icon">✧</span><div><h2>AI Copilot</h2><p>Improve wording using your resume content.</p></div></div>
+          <a class="workspace-primary-button copilot-ask-button" href="{{ url_for('main.ai_copilot') }}">Open AI Copilot <span>→</span></a>
+          <div class="copilot-shortcuts">
+            <a href="{{ url_for('main.ai_copilot') }}?mode=summary">✎ Improve my summary</a>
+            <a href="{{ url_for('main.ai_copilot') }}?mode=bullets">▤ Strengthen bullet points</a>
+            <a href="{{ url_for('main.ai_copilot') }}?mode=skills">✦ Review relevant skills</a>
+            <a href="{{ url_for('main.ai_copilot') }}?mode=ats">◉ Check resume readiness</a>
+          </div>
+        </section>
+
+        <section class="dashboard-side-card activity-card">
+          <div class="side-card-heading"><h2>Recent Activity</h2><span class="activity-local-label">This browser</span></div>
+          <ul id="recent-activity-list" class="recent-activity-list"></ul>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

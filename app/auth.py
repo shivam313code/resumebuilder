@@ -17,6 +17,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    jsonify,
     session,
     url_for,
 )
@@ -252,6 +253,57 @@ def logout():
     session.clear()
     flash("You have been signed out.", "success")
     return redirect(url_for("main.index"))
+
+
+@auth_blueprint.post("/account/profile")
+def update_profile_name():
+    if g.user is None:
+        return jsonify(error="Please sign in again to continue."), 401
+    token = request.headers.get("X-CSRF-Token", "")
+    stored_token = session.get("_csrf_token", "")
+    if not token or not stored_token or not hmac.compare_digest(token, stored_token):
+        return jsonify(error="Your session expired. Reload the page and try again."), 400
+    payload = request.get_json(silent=True)
+    name = payload.get("name", "").strip() if isinstance(payload, dict) else ""
+    if not name or len(name) > 100:
+        return jsonify(error="Enter a name between 1 and 100 characters."), 400
+    with _connect() as connection:
+        connection.execute("UPDATE users SET name = ? WHERE id = ?", (name, g.user["id"]))
+    return jsonify(name=name)
+
+
+@auth_blueprint.post("/account/password")
+def update_password():
+    if g.user is None:
+        flash("Sign in again before changing your password.", "error")
+        return redirect(url_for("auth.login"))
+    _validate_csrf()
+    current_password = request.form.get("current_password", "")
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
+    if not 12 <= len(new_password) <= 256:
+        flash("Use a new password between 12 and 256 characters.", "error")
+        return redirect(url_for("main.settings") + "#security")
+    if new_password != confirm_password:
+        flash("The new password and confirmation do not match.", "error")
+        return redirect(url_for("main.settings") + "#security")
+    with _connect() as connection:
+        user = connection.execute(
+            "SELECT password_hash FROM users WHERE id = ?", (g.user["id"],)
+        ).fetchone()
+        if user is None:
+            return jsonify(error="Your account could not be found."), 404
+        if user["password_hash"] and not check_password_hash(
+            user["password_hash"], current_password
+        ):
+            flash("Your current password is incorrect.", "error")
+            return redirect(url_for("main.settings") + "#security")
+        connection.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new_password), g.user["id"]),
+        )
+    flash("Your password has been updated.", "success")
+    return redirect(url_for("main.settings") + "#security")
 
 
 @auth_blueprint.get("/auth/<provider>")

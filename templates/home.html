@@ -13,8 +13,8 @@
 </head>
 <body class="resumepro-home">
   {% set modern_pro_url = url_for('main.edit_resume', template_id='modern-pro') %}
-  {% set modern_pro_login_url = url_for('auth.login', next=modern_pro_url) %}
-  {% set modern_pro_signup_url = url_for('auth.signup', next=modern_pro_url) %}
+  {% set dashboard_login_url = url_for('auth.login', next=url_for('main.dashboard')) %}
+  {% set dashboard_signup_url = url_for('auth.signup', next=url_for('main.dashboard')) %}
   <header class="rp-header" id="top">
     <a class="rp-brand" href="#top" aria-label="ResumePro home"><span class="rp-brand-mark">R</span><span>ResumePro</span></a>
     <nav class="rp-nav" aria-label="Main navigation">
@@ -30,11 +30,11 @@
         <span aria-hidden="true">☼</span><span class="rp-toggle-track"><i></i></span><span aria-hidden="true">☾</span>
       </button>
       {% if current_user %}
-      <a class="rp-login" href="{{ modern_pro_url }}">{{ current_user.name }}</a>
+      <a class="rp-login" href="{{ url_for('main.dashboard') }}">{{ current_user.name }}</a>
       <form class="rp-logout-form" method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="rp-get-started" type="submit">Log Out</button></form>
       {% else %}
-      <a class="rp-login" href="{{ modern_pro_login_url }}">Login</a>
-      <a class="rp-get-started" href="{{ modern_pro_signup_url }}">Get Started <span aria-hidden="true">→</span></a>
+      <a class="rp-login" href="{{ dashboard_login_url }}">Login</a>
+      <a class="rp-get-started" href="{{ dashboard_signup_url }}">Get Started <span aria-hidden="true">→</span></a>
       {% endif %}
     </div>
     <button class="rp-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">
@@ -124,7 +124,7 @@
       </div>
     </section>
     <section class="rp-link-sections">
-      <div id="pricing"><span>PRICING</span><h2>Get started for free</h2><p>Explore the resume templates and use the included career tools at no cost.</p><a href="{{ modern_pro_signup_url }}">Create your free account →</a></div>
+      <div id="pricing"><span>PRICING</span><h2>Get started for free</h2><p>Explore the resume templates and use the included career tools at no cost.</p><a href="{{ dashboard_signup_url }}">Create your free account →</a></div>
       <div id="career-tips"><span>CAREER TOOLKIT</span><h2>Make your next move</h2><p>Build your resume, review your content, and prepare a polished document for your next opportunity.</p><a href="{{ url_for('main.resume_builder') }}">Explore resume templates →</a></div>
     </section>
   </main>

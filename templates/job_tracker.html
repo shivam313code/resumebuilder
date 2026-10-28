@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6fc">
+  <title>Job Tracker — ResumePro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='job_tracker.js') }}" defer></script>
+</head>
+<body class="workspace-page job-tracker-page" data-user-id="{{ current_user.id }}">
+  <script src="{{ url_for('static', filename='workspace-preferences.js') }}"></script>
+  <aside class="workspace-sidebar">
+    <a class="workspace-brand" href="{{ url_for('main.index') }}"><span class="brand-mark">R</span><span>ResumePro</span></a>
+    <nav class="workspace-nav" aria-label="Workspace">
+      <a href="{{ url_for('main.dashboard') }}"><span>⌂</span>Dashboard</a>
+      <a href="{{ url_for('main.dashboard') }}#my-resumes"><span>▤</span>My Resumes</a>
+      <a href="{{ url_for('main.edit_resume', template_id='modern-pro') }}"><span>▣</span>Resume Editor</a>
+      <a href="{{ url_for('main.ai_copilot') }}"><span>✧</span>AI Copilot</a>
+      <a href="{{ url_for('main.ai_copilot') }}#analysis"><span>◉</span>ATS Analysis</a>
+      <a href="{{ url_for('main.resume_builder') }}"><span>▧</span>Templates</a>
+      <a href="{{ url_for('main.ai_copilot') }}?mode=cover-letter"><span>✉</span>Cover Letter</a>
+      <a class="active" href="{{ url_for('main.job_tracker') }}"><span>⌕</span>Job Tracker</a>
+      <a href="{{ url_for('main.settings') }}"><span>⚙</span>Settings</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-nav-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span>↗</span>Sign out</button></form>
+    </nav>
+    <section class="workspace-plan">
+      <span class="plan-crown">♛</span><strong>Free Plan</strong>
+      <p>Track applications privately in this browser.</p>
+      <a href="{{ url_for('main.settings') }}">Workspace Settings <span>→</span></a>
+    </section>
+  </aside>
+
+  <div class="workspace-shell">
+    <header class="workspace-topbar">
+      <a class="workspace-mobile-brand" href="{{ url_for('main.dashboard') }}"><span class="brand-mark">R</span> ResumePro</a>
+      <label class="workspace-search"><span aria-hidden="true">⌕</span><input id="job-global-search" type="search" placeholder="Search jobs, companies, or keywords…" aria-label="Search job applications"></label>
+      <div class="workspace-top-actions">
+        <span class="credit-pill"><span>⌕</span> <strong>Job Tracker</strong></span>
+        <span class="top-avatar" aria-hidden="true">{{ current_user.name[:1]|upper }}</span>
+        <span class="top-user"><strong>{{ current_user.name }}</strong><small>ResumePro account</small></span>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="workspace-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" aria-label="Sign out">↗</button></form>
+      </div>
+    </header>
+
+    <main class="job-tracker-content">
+      <div class="job-tracker-grid">
+        <div class="job-tracker-main">
+          <section class="job-tracker-hero">
+            <div class="job-tracker-hero-copy"><span class="hero-eyebrow">◉ JOB TRACKER</span><h1>Track Your <strong>Dream Job Journey</strong></h1><p>Stay organized, track applications, and keep up with your next steps.</p><button class="workspace-primary-button" type="button" data-open-job-dialog>＋ Add an Application</button></div>
+            <div class="job-tracker-hero-art" aria-hidden="true"><span class="job-hero-orbit"></span><span class="job-hero-bag">▣</span><span class="job-hero-person">✦</span><span class="job-hero-card">Your next<br>opportunity awaits</span><span class="job-hero-doc">R<br><i>━━━━</i><i>━━━</i></span></div>
+          </section>
+
+          <section class="job-stats" aria-label="Application statistics">
+            <article class="job-stat-card"><span class="job-stat-icon stat-violet">▣</span><div><strong id="job-stat-total">0</strong><small>Total Applications</small><em id="job-stat-month">Start tracking today</em></div></article>
+            <article class="job-stat-card"><span class="job-stat-icon stat-blue">◉</span><div><strong id="job-stat-review">0</strong><small>Under Review</small><em id="job-stat-review-share">0% of total</em></div></article>
+            <article class="job-stat-card"><span class="job-stat-icon stat-purple">▦</span><div><strong id="job-stat-interviews">0</strong><small>Interviews</small><em id="job-stat-interview-share">0% of total</em></div></article>
+            <article class="job-stat-card"><span class="job-stat-icon stat-teal">✓</span><div><strong id="job-stat-offers">0</strong><small>Offers</small><em id="job-stat-offer-share">0% of total</em></div></article>
+            <article class="job-stat-card"><span class="job-stat-icon stat-red">×</span><div><strong id="job-stat-rejected">0</strong><small>Rejected</small><em id="job-stat-rejected-share">0% of total</em></div></article>
+          </section>
+
+          <section class="job-applications-card" id="applications">
+            <div class="job-section-heading"><div><h2>▣ My Job Applications</h2><p id="job-application-count">Your job search, organized in one place.</p></div><div class="job-table-actions"><label class="job-search-field"><span>⌕</span><input id="job-search" type="search" placeholder="Search applications…" aria-label="Search applications"></label><button id="job-filter-toggle" type="button" class="small-outline-button" aria-expanded="false">▽ Filter</button><button type="button" class="workspace-primary-button compact-button" data-open-job-dialog>＋ Add Job</button></div></div>
+            <div class="job-filter-panel" id="job-filter-panel" hidden><label>Status<select id="job-status-filter"><option value="all">All statuses</option><option value="Applied">Applied</option><option value="Under Review">Under Review</option><option value="Interview">Interview</option><option value="Offer">Offer</option><option value="Rejected">Rejected</option></select></label><label>Sort by<select id="job-sort"><option value="newest">Recently applied</option><option value="oldest">Oldest application</option><option value="company">Company name</option><option value="next-step">Next step date</option></select></label></div>
+            <nav class="job-status-tabs" aria-label="Filter applications by status">
+              <button type="button" class="active" data-job-tab="all">All <span id="job-tab-all">0</span></button>
+              <button type="button" data-job-tab="Applied">Applied <span id="job-tab-applied">0</span></button>
+              <button type="button" data-job-tab="Under Review">Under Review <span id="job-tab-review">0</span></button>
+              <button type="button" data-job-tab="Interview">Interview <span id="job-tab-interview">0</span></button>
+              <button type="button" data-job-tab="Offer">Offer <span id="job-tab-offer">0</span></button>
+              <button type="button" data-job-tab="Rejected">Rejected <span id="job-tab-rejected">0</span></button>
+            </nav>
+            <div class="job-table-scroll"><table class="job-table"><thead><tr><th>Job Title</th><th>Company</th><th>Status</th><th>Applied Date</th><th>Next Step</th><th>Actions</th></tr></thead><tbody id="job-table-body"></tbody></table></div>
+            <div id="job-empty-state" class="job-empty-state"><span>▣</span><strong>No applications yet</strong><p>Add your first job to keep applications, interviews, and follow-ups organized.</p><button class="workspace-primary-button" type="button" data-open-job-dialog>＋ Add your first job</button></div>
+            <p id="job-no-results" class="workspace-empty-state" hidden>No applications match those filters.</p>
+            <p id="job-feedback" class="job-feedback" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="job-career-tools">
+            <div class="dashboard-section-heading"><div><h2>Career Tools</h2><p>Prepare for each step of your search.</p></div></div>
+            <div class="job-career-tools-grid">
+              <a href="{{ url_for('main.resume_builder') }}"><span class="quick-tool-icon stat-blue">⌕</span><strong>Find Matching Jobs</strong><small>Browse resume templates and tools</small></a>
+              <a href="{{ url_for('main.edit_resume', template_id='modern-pro') }}"><span class="quick-tool-icon stat-violet">▣</span><strong>Optimize Resume</strong><small>Update your resume for a role</small></a>
+              <a href="{{ url_for('main.ai_copilot') }}?mode=cover-letter"><span class="quick-tool-icon stat-purple">✎</span><strong>Generate Cover Letter</strong><small>Prepare a reviewable draft</small></a>
+              <a href="{{ url_for('main.ai_copilot') }}?mode=interview"><span class="quick-tool-icon stat-teal">▣</span><strong>Interview Preparation</strong><small>Practice questions from your resume</small></a>
+            </div>
+          </section>
+        </div>
+
+        <aside class="job-tracker-aside">
+          <section class="settings-card job-analytics-card"><div class="settings-card-heading"><span class="settings-icon">◉</span><div><h2>Application Analytics</h2><p>Based on your saved applications</p></div><select id="analytics-period" aria-label="Analytics period"><option value="all">All time</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select></div><div class="job-analytics-body"><div class="job-donut" id="job-donut"><div><strong id="job-donut-total">0</strong><span>Applications</span></div></div><ul id="job-analytics-legend" class="job-analytics-legend"></ul></div></section>
+          <section class="settings-card upcoming-interviews-card"><div class="settings-card-heading"><span class="settings-icon">◷</span><div><h2>Upcoming Next Steps</h2><p>Interviews and follow-ups</p></div><button id="view-job-events" class="small-outline-button" type="button">View All</button></div><ul id="upcoming-job-events" class="upcoming-job-events"></ul><p id="upcoming-events-empty" class="job-aside-empty">Add a dated next step to an application to see it here.</p></section>
+          <section class="settings-card application-calendar-card"><div class="settings-card-heading"><span class="settings-icon">▦</span><div><h2>Application Calendar</h2><p id="calendar-month-label"></p></div><div class="calendar-controls"><button id="calendar-prev" type="button" aria-label="Previous month">‹</button><button id="calendar-next" type="button" aria-label="Next month">›</button></div></div><div class="job-calendar" id="job-calendar"></div><div class="calendar-legend"><span><i class="calendar-dot dot-applied"></i>Applied</span><span><i class="calendar-dot dot-interview"></i>Interview</span><span><i class="calendar-dot dot-followup"></i>Next step</span></div></section>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="job-dialog" class="job-dialog">
+    <form id="job-form" class="job-form">
+      <div class="job-dialog-heading"><div><span class="hero-eyebrow">APPLICATION DETAILS</span><h2 id="job-dialog-title">Add a Job Application</h2></div><button id="job-dialog-close" type="button" aria-label="Close dialog">×</button></div>
+      <input id="job-id" type="hidden">
+      <div class="settings-fields-grid">
+        <label class="settings-field">Job Title<input id="job-title" required maxlength="120" placeholder="e.g. Product Designer"></label>
+        <label class="settings-field">Company<input id="job-company" required maxlength="120" placeholder="Company name"></label>
+        <label class="settings-field">Location<input id="job-location" maxlength="120" placeholder="City, Country or Remote"></label>
+        <label class="settings-field">Work Type<select id="job-work-type"><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
+        <label class="settings-field">Status<select id="job-status"><option>Applied</option><option>Under Review</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></label>
+        <label class="settings-field">Applied Date<input id="job-applied-date" type="date" required></label>
+        <label class="settings-field">Next Step<input id="job-next-step" maxlength="120" placeholder="e.g. Technical interview"></label>
+        <label class="settings-field">Next Step Date<input id="job-next-date" type="date"></label>
+        <label class="settings-field settings-field-wide">Job Link<input id="job-url" type="url" maxlength="500" placeholder="https://company.example/jobs/123"></label>
+        <label class="settings-field settings-field-wide">Notes<textarea id="job-notes" maxlength="2000" rows="3" placeholder="Add notes for this application"></textarea></label>
+      </div>
+      <p id="job-form-error" class="job-form-error" role="alert"></p>
+      <div class="job-dialog-actions"><button id="job-dialog-cancel" class="small-outline-button" type="button">Cancel</button><button class="workspace-primary-button" type="submit">Save Application</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
