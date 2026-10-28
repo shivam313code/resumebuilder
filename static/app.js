@@ -1,30 +1,44 @@
 const defaultEntries = {
   experience: [
     {
-      role: "Senior Product Designer",
-      company: "Northstar Studio",
-      location: "New York, NY",
-      dates: "2021 — Present",
-      description: "Led end-to-end design for a mobile platform used by 200K+ customers. Partnered with product and engineering to improve onboarding conversion by 28%."
+      role: "Data Scientist",
+      company: "EXL Services",
+      location: "Delhi, India",
+      dates: "Feb 2022 — Present",
+      description: "Developed and deployed ML models for classification and regression.\nWorked on model monitoring and performance tracking.\nBuilt pipelines for data ingestion, processing and model deployment.\nCollaborated with cross-functional teams to deliver business solutions."
     },
     {
-      role: "Product Designer",
-      company: "Brightside Digital",
-      location: "New York, NY",
-      dates: "2018 — 2021",
-      description: "Designed accessible web experiences and built a shared component library that helped the team ship new features 30% faster."
+      role: "Data Analyst",
+      company: "ABC Tech Solutions",
+      location: "Delhi, India",
+      dates: "Jan 2021 — Jan 2022",
+      description: "Performed data analysis and created insightful dashboards.\nWorked with large datasets using SQL and Python.\nSupported business stakeholders with data-driven insights."
     }
   ],
   education: [
     {
-      degree: "BFA, Communication Design",
-      school: "Parsons School of Design",
-      location: "New York, NY",
-      dates: "2014 — 2018",
+      degree: "B.Tech in Computer Science",
+      school: "Delhi Technological University",
+      location: "Delhi, India",
+      dates: "2018 — 2022",
       description: ""
     }
+  ],
+  projects: [
+    { name: "Inventory Optimization & Demand Forecasting", dates: "2024", description: "Built demand forecasting models using XGBoost and ARIMA, reducing inventory costs by 20%." },
+    { name: "Model Monitoring Platform", dates: "2023", description: "Developed a model monitoring platform with FastAPI and Docker to track model performance." }
+  ],
+  certificates: [
+    { name: "Claude Foundation", issuer: "Anthropic", dates: "2026" },
+    { name: "Machine Learning Specialization", issuer: "Coursera", dates: "2024" }
   ]
 };
+const defaultHighlights = [
+  "4+ years of experience in Data Science and Machine Learning",
+  "Expertise in Python, SQL, ML, Deep Learning, and NLP",
+  "Experience in end-to-end model development and deployment",
+  "Strong problem-solving and analytical skills"
+];
 
 const entrySuggestions = {
   roles: [
@@ -83,8 +97,19 @@ const form = document.querySelector("#resume-form");
 const status = document.querySelector("#save-status");
 const defaults = Object.fromEntries(new FormData(form).entries());
 let entries = structuredClone(defaultEntries);
+let appearance = {
+  theme: "#3159b7",
+  layout: "single",
+  font: "modern",
+  sections: {
+    summary: true, highlights: true, experience: true, education: true, skills: true,
+    projects: true, languages: true, certificates: true, software: true, interests: true
+  },
+  photo: ""
+};
 let zoom = 100;
 let saveTimer;
+let activeSuggestion = { target: null, entryIndex: null };
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -140,18 +165,30 @@ function renderEntries(type) {
       ["dates", "Date", "", "date"],
       ["description", "What did you accomplish?", "", "textarea"]
     ]
-    : [
+    : type === "education"
+    ? [
       ["degree", "Degree / course", "degrees", "text"],
       ["school", "School", "schools", "text"],
       ["location", "Location", "locations", "text"],
       ["dates", "Date", "", "date"],
       ["description", "Additional details", "", "textarea"]
+    ]
+    : type === "projects"
+    ? [
+      ["name", "Project name", "", "text"],
+      ["dates", "Year", "", "text"],
+      ["description", "What did you build?", "", "textarea"]
+    ]
+    : [
+      ["name", "Certification", "", "text"],
+      ["issuer", "Issuing organization", "", "text"],
+      ["dates", "Year", "", "text"]
     ];
 
   list.innerHTML = entries[type].map((entry, index) => `
     <div class="entry-card" data-entry-type="${type}" data-entry-index="${index}">
-      <div class="entry-card-top"><span>${escapeHtml(entry[isExperience ? "role" : "degree"] || (isExperience ? "New position" : "New education"))}</span>
-        <button class="remove-entry" type="button" aria-label="Remove ${isExperience ? "experience" : "education"} entry" data-remove="${index}">×</button>
+      <div class="entry-card-top"><span>${escapeHtml(entry[isExperience ? "role" : type === "education" ? "degree" : "name"] || `New ${type.slice(0, -1)}`)}</span>
+        <button class="remove-entry" type="button" aria-label="Remove ${type} entry" data-remove="${index}">×</button>
       </div>
       <div class="entry-fields">
         ${fields.map(([key, label, suggestionKey, fieldType]) => {
@@ -204,9 +241,9 @@ function renderEntries(type) {
           : value ? `Resume date: ${formatResumeDate(value)} · DD-MM-YY` : "Enter DD-MM-YY or choose a calendar date.";
       }
       renderPreview();
-      if (key === "role" || key === "degree") {
+      if (key === "role" || key === "degree" || key === "name") {
         const title = card.querySelector(".entry-card-top span");
-        title.textContent = value || (entryType === "experience" ? "New position" : "New education");
+        title.textContent = value || (entryType === "experience" ? "New position" : entryType === "education" ? "New education" : `New ${entryType.slice(0, -1)}`);
       }
       scheduleSave();
       refreshAnalysisIfVisible();
@@ -251,7 +288,7 @@ function renderPreview() {
     <div class="resume-entry">
       <div class="resume-entry-heading"><strong>${escapeHtml(entry.role || "")}</strong><span class="resume-entry-date">${escapeHtml(formatResumeDate(entry.dates))}</span></div>
       <p class="resume-entry-subtitle">${escapeHtml([entry.company, entry.location].filter(Boolean).join(" · "))}</p>
-      ${entry.description ? `<p class="resume-entry-description">${escapeHtml(entry.description)}</p>` : ""}
+      ${entry.description ? `<ul class="resume-entry-bullets">${entry.description.split(/\n+/).map((bullet) => bullet.trim()).filter(Boolean).map((bullet) => `<li>${escapeHtml(bullet.replace(/^[-•]\s*/, ""))}</li>`).join("")}</ul>` : ""}
     </div>`).join("");
   document.querySelector("#preview-education").innerHTML = entries.education.map((entry) => `
     <div class="resume-entry">
@@ -259,6 +296,25 @@ function renderPreview() {
       <p class="resume-entry-subtitle">${escapeHtml([entry.school, entry.location].filter(Boolean).join(" · "))}</p>
       ${entry.description ? `<p class="resume-entry-description">${escapeHtml(entry.description)}</p>` : ""}
     </div>`).join("");
+  document.querySelector("#preview-projects").innerHTML = entries.projects.map((entry) => `
+    <div class="resume-entry">
+      <div class="resume-entry-heading"><strong>${escapeHtml(entry.name || "")}</strong><span class="resume-entry-date">${escapeHtml(entry.dates || "")}</span></div>
+      ${entry.description ? `<ul class="resume-entry-bullets">${entry.description.split(/\n+/).map((bullet) => bullet.trim()).filter(Boolean).map((bullet) => `<li>${escapeHtml(bullet.replace(/^[-•]\s*/, ""))}</li>`).join("")}</ul>` : ""}
+    </div>`).join("");
+  document.querySelector("#preview-certificates").innerHTML = entries.certificates.map((entry) =>
+    `<span class="resume-certificate"><strong>${escapeHtml(entry.name || "")}</strong><small>${escapeHtml([entry.issuer, entry.dates].filter(Boolean).join(" · "))}</small></span>`
+  ).join("");
+  const highlights = data.highlights.split(/\n+/).map((item) => item.trim()).filter(Boolean);
+  document.querySelector("#preview-highlights").innerHTML = highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  document.querySelector('[data-resume-section="highlights"]').hidden =
+    !highlights.length || !appearance.sections.highlights;
+  document.querySelector("#summary-count").textContent = String(data.summary.length);
+  document.querySelector("#resume-photo").src = appearance.photo || "";
+  document.querySelector("#resume-photo").hidden = !appearance.photo;
+  document.querySelector("#resume-photo-placeholder").hidden = Boolean(appearance.photo);
+  document.querySelector("#profile-photo-preview").src = appearance.photo || "";
+  document.querySelector("#profile-photo-preview").hidden = !appearance.photo;
+  document.querySelector("#profile-photo-placeholder").hidden = Boolean(appearance.photo);
   const skills = data.skills.split(",").map((skill) => skill.trim()).filter(Boolean);
   const skillPreview = document.querySelector("#preview-skills");
   const usesSkillBars = ["moon", "max", "social", "shelah"].some((templateId) =>
@@ -268,10 +324,33 @@ function renderPreview() {
     ? `<span class="skill-bar-item">${escapeHtml(skill)}<span class="skill-bar"><i style="--skill-level:${[88, 78, 72, 84, 67, 76, 80, 70][index % 8]}%"></i></span></span>`
     : `<span class="skill-chip">${escapeHtml(skill)}</span>`).join("");
   renderPreviewList("#preview-languages", "#languages-section", data.languages);
-  renderPreviewList("#preview-certificates", "#certificates-section", data.certificates);
   renderPreviewList("#preview-software", "#software-section", data.software);
   renderPreviewList("#preview-interests", "#interests-section", data.interests);
+  applyAppearance();
   updateCompleteness(data);
+}
+
+function applyAppearance() {
+  const preview = document.querySelector("#resume-preview");
+  preview.style.setProperty("--resume-accent", appearance.theme);
+  preview.classList.toggle("layout-sidebar", appearance.layout === "sidebar");
+  preview.classList.toggle("font-classic", appearance.font === "classic");
+  preview.classList.toggle("font-compact", appearance.font === "compact");
+  for (const [section, visible] of Object.entries(appearance.sections)) {
+    const element = document.querySelector(`[data-resume-section="${section}"]`);
+    const control = document.querySelector(`[data-section="${section}"]`);
+    if (element) element.hidden = !visible;
+    if (control) control.checked = visible;
+  }
+  document.querySelectorAll(".theme-swatch").forEach((swatch) => {
+    swatch.classList.toggle("active", swatch.dataset.theme === appearance.theme);
+  });
+  document.querySelector("#resume-layout").value = appearance.layout;
+  document.querySelector("#resume-font").value = appearance.font;
+}
+
+function saveAppearance() {
+  scheduleSave();
 }
 
 function renderPreviewList(listSelector, sectionSelector, value) {
@@ -281,6 +360,36 @@ function renderPreviewList(listSelector, sectionSelector, value) {
   document.querySelector(listSelector).innerHTML = values
     .map((item) => `<span class="skill-chip">${escapeHtml(item)}</span>`)
     .join("");
+}
+
+function renderHighlights() {
+  const list = document.querySelector("#highlights-list");
+  const values = (form.elements.namedItem("highlights").value || "").split(/\n+/);
+  list.innerHTML = values.map((value, index) => `
+    <label class="highlight-editor-row">
+      <span aria-hidden="true">⠿</span>
+      <input type="text" value="${escapeHtml(value.trim())}" data-highlight-index="${index}" aria-label="Key highlight ${index + 1}">
+      <button type="button" class="remove-entry" data-remove-highlight="${index}" aria-label="Remove key highlight">▤</button>
+    </label>
+  `).join("");
+  list.querySelectorAll("[data-highlight-index]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const current = [...list.querySelectorAll("[data-highlight-index]")].map((item) => item.value.trim());
+      form.elements.namedItem("highlights").value = current.join("\n");
+      renderPreview();
+      scheduleSave();
+    });
+  });
+  list.querySelectorAll("[data-remove-highlight]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const values = form.elements.namedItem("highlights").value.split(/\n+/);
+      values.splice(Number(button.dataset.removeHighlight), 1);
+      form.elements.namedItem("highlights").value = values.filter(Boolean).join("\n");
+      renderHighlights();
+      renderPreview();
+      scheduleSave();
+    });
+  });
 }
 
 function updateCompleteness(data) {
@@ -299,7 +408,8 @@ function saveDraft() {
     localStorage.setItem("forma-resume-draft", JSON.stringify({
       data: readForm(),
       entries,
-      jobDescription: document.querySelector("#job-description").value
+      jobDescription: document.querySelector("#job-description").value,
+      appearance
     }));
     status.textContent = "All changes saved";
   } catch (error) {
@@ -324,7 +434,7 @@ function loadDraft() {
       const field = form.elements.namedItem(name);
       if (field && typeof value === "string") field.value = value;
     }
-    for (const type of ["experience", "education"]) {
+    for (const type of ["experience", "education", "projects", "certificates"]) {
       if (Array.isArray(draft.entries[type])) {
         entries[type] = draft.entries[type].filter((entry) => entry && typeof entry === "object").map((entry) =>
           Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, String(value ?? "")])));
@@ -332,6 +442,29 @@ function loadDraft() {
     }
     if (typeof draft.jobDescription === "string") {
       document.querySelector("#job-description").value = draft.jobDescription;
+    }
+    if (draft.appearance && typeof draft.appearance === "object") {
+      if (typeof draft.appearance.theme === "string" && /^#[\da-f]{6}$/i.test(draft.appearance.theme)) {
+        appearance.theme = draft.appearance.theme;
+      }
+      if (["single", "sidebar"].includes(draft.appearance.layout)) {
+        appearance.layout = draft.appearance.layout;
+      }
+      if (["modern", "classic", "compact"].includes(draft.appearance.font)) {
+        appearance.font = draft.appearance.font;
+      }
+      if (typeof draft.appearance.photo === "string" &&
+        /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(draft.appearance.photo) &&
+        draft.appearance.photo.length <= 2_800_000) {
+        appearance.photo = draft.appearance.photo;
+      }
+      if (draft.appearance.sections && typeof draft.appearance.sections === "object") {
+        for (const section of Object.keys(appearance.sections)) {
+          if (typeof draft.appearance.sections[section] === "boolean") {
+            appearance.sections[section] = draft.appearance.sections[section];
+          }
+        }
+      }
     }
   } catch (error) {
     status.textContent = "Could not load saved draft";
@@ -353,12 +486,108 @@ document.querySelector("#add-education").addEventListener("click", () => {
   scheduleSave();
   refreshAnalysisIfVisible();
 });
+document.querySelector("#add-project").addEventListener("click", () => {
+  entries.projects.push({ name: "", dates: "", description: "" });
+  renderEntries("projects");
+  renderPreview();
+  scheduleSave();
+});
+document.querySelector("#add-certificate").addEventListener("click", () => {
+  entries.certificates.push({ name: "", issuer: "", dates: "" });
+  renderEntries("certificates");
+  renderPreview();
+  scheduleSave();
+});
+document.querySelector("#add-highlight").addEventListener("click", () => {
+  const field = form.elements.namedItem("highlights");
+  field.value = [...field.value.split(/\n+/).filter(Boolean), ""].join("\n");
+  renderHighlights();
+  const inputs = document.querySelectorAll("[data-highlight-index]");
+  inputs[inputs.length - 1]?.focus();
+});
+document.querySelector("#profile-photo-input").addEventListener("change", (event) => {
+  const [file] = event.target.files;
+  if (!file) return;
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+    window.alert("Choose a JPG, PNG, or WebP photo under 2 MB.");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    appearance.photo = String(reader.result);
+    renderPreview();
+    scheduleSave();
+  });
+  reader.addEventListener("error", () => window.alert("We couldn't read this photo. Please try another file."));
+  reader.readAsDataURL(file);
+});
 form.addEventListener("input", () => {
   renderPreview();
+  if (document.activeElement?.name === "highlights") renderHighlights();
   scheduleSave();
   refreshAnalysisIfVisible();
 });
-document.querySelector("#download-button").addEventListener("click", () => window.print());
+const downloadButton = document.querySelector("#download-button");
+const downloadOptions = document.querySelector("#download-options");
+downloadButton.addEventListener("click", () => {
+  const isOpen = !downloadOptions.hidden;
+  downloadOptions.hidden = isOpen;
+  downloadButton.setAttribute("aria-expanded", String(!isOpen));
+});
+document.querySelector("#download-pdf").addEventListener("click", () => {
+  downloadOptions.hidden = true;
+  downloadButton.setAttribute("aria-expanded", "false");
+  window.print();
+});
+document.querySelector("#download-docx").addEventListener("click", downloadDocx);
+document.querySelector("#share-button").addEventListener("click", () => createShareLink());
+document.querySelector("#refresh-share-link").addEventListener("click", () => createShareLink(true));
+document.querySelector("#copy-share-link").addEventListener("click", copyShareLink);
+document.querySelector("#revoke-share-link").addEventListener("click", revokeShareLink);
+document.querySelectorAll(".theme-swatch").forEach((button) => {
+  button.addEventListener("click", () => {
+    appearance.theme = button.dataset.theme;
+    applyAppearance();
+    saveAppearance();
+  });
+});
+document.querySelector("#resume-layout").addEventListener("change", (event) => {
+  appearance.layout = event.target.value;
+  applyAppearance();
+  saveAppearance();
+});
+document.querySelector("#resume-font").addEventListener("change", (event) => {
+  appearance.font = event.target.value;
+  applyAppearance();
+  saveAppearance();
+});
+document.querySelectorAll("[data-section]").forEach((control) => {
+  control.addEventListener("change", () => {
+    appearance.sections[control.dataset.section] = control.checked;
+    applyAppearance();
+    saveAppearance();
+  });
+});
+document.querySelectorAll("[data-assist]").forEach((button) => {
+  button.addEventListener("click", () => runWritingAssistant(button.dataset.assist));
+});
+document.querySelector("#view-analysis-button").addEventListener("click", () => {
+  analyzeResume();
+  document.querySelector("#analysis-card").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.querySelector("#cover-letter-button").addEventListener("click", createCoverLetterDraft);
+document.querySelector("#success-cover-letter").addEventListener("click", () => {
+  document.querySelector("#download-success-dialog").close();
+  createCoverLetterDraft();
+});
+document.querySelector("#success-optimize").addEventListener("click", () => {
+  document.querySelector("#download-success-dialog").close();
+  optimizeForJob();
+});
+document.querySelector("#copy-suggestion").addEventListener("click", copySuggestion);
+document.querySelector("#apply-suggestion").addEventListener("click", applySuggestion);
+window.addEventListener("afterprint", () => document.querySelector("#download-success-dialog").showModal());
 document.querySelector("#job-description").addEventListener("input", () => {
   scheduleSave();
   refreshAnalysisIfVisible();
@@ -369,11 +598,26 @@ document.querySelector("#reset-button").addEventListener("click", () => {
   form.reset();
   for (const [name, value] of Object.entries(defaults)) form.elements.namedItem(name).value = value;
   entries = structuredClone(defaultEntries);
+  renderHighlights();
   document.querySelector("#job-description").value = "";
+  appearance = {
+    theme: "#3159b7",
+    layout: "single",
+    font: "modern",
+    sections: {
+      summary: true, highlights: true, experience: true, education: true, skills: true,
+      projects: true, languages: true, certificates: true, software: true, interests: true
+    },
+    photo: ""
+  };
   localStorage.removeItem("forma-resume-draft");
   document.querySelector("#analysis-results").hidden = true;
+  document.querySelector("#ats-score-value").innerHTML = "—<small>/ 100</small>";
+  document.querySelector("#ats-mini-checks").textContent = "Run your resume check to see feedback.";
   renderEntries("experience");
   renderEntries("education");
+  renderEntries("projects");
+  renderEntries("certificates");
   renderPreview();
   status.textContent = "All changes saved";
 });
@@ -386,11 +630,315 @@ function changeZoom(amount) {
   document.querySelector("#resume-preview").style.zoom = `${zoom}%`;
 }
 
+function resumePayload() {
+  return { data: readForm(), entries, profilePhoto: appearance.photo };
+}
+
+function csrfHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+  };
+}
+
+async function responseError(response) {
+  try {
+    const body = await response.json();
+    return body.error || `Request failed (${response.status}).`;
+  } catch (error) {
+    console.error("Could not read the server error response.", error);
+    return `Request failed (${response.status}).`;
+  }
+}
+
+async function downloadDocx() {
+  downloadOptions.hidden = true;
+  downloadButton.setAttribute("aria-expanded", "false");
+  status.textContent = "Preparing DOCX…";
+  try {
+    const response = await fetch("/api/resume/export/docx", {
+      method: "POST",
+      headers: csrfHeaders(),
+      body: JSON.stringify(resumePayload())
+    });
+    if (!response.ok) throw new Error(await responseError(response));
+    const file = await response.blob();
+    const fileUrl = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.download = `${readForm().name.trim().replace(/[^\p{L}\p{N}-]+/gu, "-").replace(/^-|-$/g, "") || "resume"}.docx`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(fileUrl);
+    status.textContent = "DOCX downloaded";
+    document.querySelector("#download-success-dialog").showModal();
+  } catch (error) {
+    status.textContent = "DOCX download failed";
+    window.alert(error.message || "We couldn't create the DOCX. Please try again.");
+  }
+}
+
+let activeShareToken = "";
+let activeShareUrl = "";
+
+function loadShareLink() {
+  try {
+    const savedUrl = localStorage.getItem("forma-resume-share-link");
+    if (!savedUrl) return;
+    const parsedUrl = new URL(savedUrl, window.location.href);
+    if (parsedUrl.origin !== window.location.origin || !/^\/resume\/shared\/[A-Za-z0-9_-]+$/.test(parsedUrl.pathname)) {
+      localStorage.removeItem("forma-resume-share-link");
+      return;
+    }
+    activeShareUrl = parsedUrl.href;
+    activeShareToken = parsedUrl.pathname.split("/").pop();
+  } catch (error) {
+    console.error("Unable to load the saved share link.", error);
+  }
+}
+
+function persistShareLink(url) {
+  try {
+    localStorage.setItem("forma-resume-share-link", url);
+    return true;
+  } catch (error) {
+    console.error("Unable to save the share link in this browser.", error);
+    return false;
+  }
+}
+
+async function createShareLink(replaceExisting = false) {
+  const dialog = document.querySelector("#share-dialog");
+  const feedback = document.querySelector("#share-feedback");
+  if (activeShareUrl && !replaceExisting) {
+    document.querySelector("#share-link").value = activeShareUrl;
+    document.querySelector("#refresh-share-link").hidden = false;
+    document.querySelector("#revoke-share-link").hidden = false;
+    feedback.textContent = "This link shows the previously shared version. Update it to share your latest changes.";
+    dialog.showModal();
+    return;
+  }
+  feedback.textContent = "Creating your private link…";
+  try {
+    const response = await fetch("/api/resume/share", {
+      method: "POST",
+      headers: csrfHeaders(),
+      body: JSON.stringify(resumePayload())
+    });
+    if (!response.ok) throw new Error(await responseError(response));
+    const result = await response.json();
+    const link = document.querySelector("#share-link");
+    link.value = result.url;
+    activeShareUrl = result.url;
+    activeShareToken = new URL(result.url).pathname.split("/").pop();
+    document.querySelector("#revoke-share-link").hidden = false;
+    document.querySelector("#refresh-share-link").hidden = false;
+    feedback.textContent = persistShareLink(result.url)
+      ? "Anyone with this link can view this saved version."
+      : "Link created, but browser storage is unavailable. Save or copy this link to manage it later.";
+    dialog.showModal();
+  } catch (error) {
+    feedback.textContent = error.message || "We couldn't create a share link.";
+    dialog.showModal();
+  }
+}
+
+async function copyShareLink() {
+  const feedback = document.querySelector("#share-feedback");
+  try {
+    await navigator.clipboard.writeText(document.querySelector("#share-link").value);
+    feedback.textContent = "Link copied to clipboard.";
+  } catch (error) {
+    feedback.textContent = "Copy was blocked by the browser. Select the link and copy it manually.";
+    console.error("Unable to copy the resume share link.", error);
+  }
+}
+
+async function revokeShareLink() {
+  const feedback = document.querySelector("#share-feedback");
+  if (!activeShareToken) {
+    feedback.textContent = "Create a new link to manage sharing.";
+    return;
+  }
+  try {
+    const response = await fetch(`/api/resume/share/${encodeURIComponent(activeShareToken)}`, {
+      method: "DELETE",
+      headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content }
+    });
+    if (!response.ok) throw new Error(await responseError(response));
+    document.querySelector("#share-link").value = "";
+    document.querySelector("#revoke-share-link").hidden = true;
+    document.querySelector("#refresh-share-link").hidden = true;
+    activeShareToken = "";
+    activeShareUrl = "";
+    localStorage.removeItem("forma-resume-share-link");
+    feedback.textContent = "Share link disabled. It can no longer be viewed.";
+  } catch (error) {
+    feedback.textContent = error.message || "We couldn't disable this link.";
+  }
+}
+
+function openAssistantDialog(title, description, text, target, entryIndex = null) {
+  activeSuggestion = { target, entryIndex };
+  document.querySelector("#assistant-dialog-title").textContent = title;
+  document.querySelector("#assistant-dialog-description").textContent = description;
+  document.querySelector("#assistant-suggestion").value = text;
+  document.querySelector("#assistant-feedback").textContent = "";
+  document.querySelector("#apply-suggestion").textContent = target === "cover-letter"
+    ? "Download draft"
+    : "Apply suggestion";
+  document.querySelector("#assistant-dialog").showModal();
+}
+
+function runWritingAssistant(action) {
+  const data = readForm();
+  if (action === "optimize") {
+    optimizeForJob();
+    return;
+  }
+  if (action === "skills") {
+    const description = document.querySelector("#job-description").value.trim();
+    if (!description) {
+      document.querySelector("#analysis-card").scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector("#job-description").focus();
+      return;
+    }
+    const currentSkills = data.skills.split(",").map((skill) => skill.trim()).filter(Boolean);
+    const currentText = ` ${normalizeMatchText(currentSkills.join(" "))} `;
+    const suggestions = extractJobKeywords(description).filter((keyword) =>
+      !currentText.includes(` ${normalizeMatchText(keyword)} `)
+    );
+    openAssistantDialog(
+      "Review skills for this job",
+      suggestions.length
+        ? `Possible job terms: ${suggestions.join(", ")}. They are not added automatically. Edit the list below and apply only skills you can support with real experience.`
+        : "Your listed skills already overlap with the highlighted job terms. You can refine the wording below.",
+      currentSkills.join(", "),
+      "skills"
+    );
+    return;
+  }
+  if (action === "bullets") {
+    const entryIndex = entries.experience.findIndex((entry) => entry.description.trim());
+    if (entryIndex < 0) {
+      document.querySelector("#add-experience").click();
+      document.querySelector("#experience-section").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const description = entries.experience[entryIndex].description.trim();
+    const bulletText = description.split(/(?<=[.!?])\s+/).filter(Boolean).map((sentence) => `• ${sentence}`).join("\n");
+    openAssistantDialog(
+      "Strengthen an experience entry",
+      "This only formats your existing description into scannable bullets. Add accurate outcomes or metrics yourself; none are invented.",
+      bulletText,
+      "experience-description",
+      entryIndex
+    );
+    return;
+  }
+  if (action === "summary" || action === "grammar" || action === "shorten") {
+    const summary = data.summary.trim().replace(/\s+/g, " ");
+    let suggestion = summary;
+    let title = "Polish your summary";
+    let description = "Review this wording before applying it. No experience or results have been added.";
+    if (action === "grammar") {
+      suggestion = summary
+        .replace(/\s*([,.;:!?])\s*/g, "$1 ")
+        .replace(/\s+/g, " ")
+        .replace(/(^|[.!?]\s+)([a-z])/g, (_match, prefix, letter) => prefix + letter.toUpperCase())
+        .trim();
+      title = "Polish summary wording";
+    } else if (action === "shorten") {
+      const sentences = summary.match(/[^.!?]+[.!?]?/g) || [];
+      suggestion = sentences.slice(0, 2).join(" ").trim();
+      title = "Shorten your summary";
+      description = "This keeps the first two sentences from your current summary. Check that the shorter version still represents you accurately.";
+    } else if (!summary) {
+      description = "Add your own background and strengths here. The assistant does not invent career details.";
+    }
+    openAssistantDialog(title, description, suggestion, "summary");
+  }
+}
+
+function optimizeForJob() {
+  document.querySelector("#analysis-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  const jobDescription = document.querySelector("#job-description");
+  if (!jobDescription.value.trim()) {
+    jobDescription.focus();
+    document.querySelector("#analysis-results").hidden = false;
+    document.querySelector("#analysis-results").innerHTML =
+      '<p class="analysis-prompt">Paste the target job description above, then run the check to compare role keywords.</p>';
+    return;
+  }
+  analyzeResume();
+  document.querySelector("#analysis-results").focus({ preventScroll: true });
+}
+
+function createCoverLetterDraft() {
+  const data = readForm();
+  const experience = entries.experience.find((entry) => entry.description.trim());
+  const jobTitle = data.title.trim() || "[Target job title]";
+  const summary = data.summary.trim() || "[Add a relevant summary of your background and strengths.]";
+  const background = experience
+    ? `My experience as ${experience.role || "[role]"} at ${experience.company || "[organization]"} includes ${experience.description.trim()}`
+    : "[Add one relevant example from your experience, projects, or education.]";
+  const letter = `Dear Hiring Team,\n\nI am writing to express my interest in the ${jobTitle} opportunity. ${summary}\n\n${background}\n\nI would welcome the opportunity to discuss how my experience could support your team. Thank you for your time and consideration.\n\nSincerely,\n${data.name.trim() || "[Your name]"}`;
+  openAssistantDialog(
+    "Your cover letter draft",
+    "This draft uses only details in your resume. Replace placeholders, add the employer's name, and verify every statement before sending.",
+    letter,
+    "cover-letter"
+  );
+}
+
+async function copySuggestion() {
+  const feedback = document.querySelector("#assistant-feedback");
+  try {
+    await navigator.clipboard.writeText(document.querySelector("#assistant-suggestion").value);
+    feedback.textContent = "Text copied to clipboard.";
+  } catch (error) {
+    feedback.textContent = "Copy was blocked by the browser. Select the text and copy it manually.";
+    console.error("Unable to copy the writing suggestion.", error);
+  }
+}
+
+function applySuggestion() {
+  const suggestion = document.querySelector("#assistant-suggestion").value.trim();
+  if (activeSuggestion.target === "cover-letter") {
+    downloadTextFile(suggestion, "cover-letter.txt", "text/plain;charset=utf-8");
+    document.querySelector("#assistant-feedback").textContent = "Cover letter draft downloaded.";
+    return;
+  }
+  if (activeSuggestion.target === "experience-description") {
+    entries.experience[activeSuggestion.entryIndex].description = suggestion;
+    renderEntries("experience");
+  } else if (activeSuggestion.target === "summary" || activeSuggestion.target === "skills") {
+    form.elements.namedItem(activeSuggestion.target).value = suggestion;
+  }
+  renderPreview();
+  scheduleSave();
+  refreshAnalysisIfVisible();
+  document.querySelector("#assistant-feedback").textContent = "Suggestion applied to your resume.";
+  window.setTimeout(() => document.querySelector("#assistant-dialog").close(), 500);
+}
+
+function downloadTextFile(text, fileName, type) {
+  const file = new Blob([text], { type });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function getResumeText(data) {
   return [
     ...Object.values(data),
-    ...entries.experience.flatMap((entry) => Object.values(entry)),
-    ...entries.education.flatMap((entry) => Object.values(entry))
+    ...Object.values(entries).flatMap((section) => section.flatMap((entry) => Object.values(entry)))
   ].join(" ");
 }
 
@@ -500,6 +1048,7 @@ function analyzeResume() {
   const missingKeywords = keywords.filter((keyword) => !matchedKeywords.includes(keyword));
   const results = document.querySelector("#analysis-results");
   const checksPassed = checks.filter((check) => check.passed).length;
+  const readinessScore = Math.round(checksPassed / checks.length * 100);
   const checklist = checks.map((check) =>
     `<li class="${check.passed ? "check-passed" : "check-missed"}">
       <span aria-hidden="true">${check.passed ? "✓" : "!"}</span>
@@ -523,9 +1072,14 @@ function analyzeResume() {
       </section>`
     : `<p class="analysis-prompt">Paste a job description above to compare its terms with your resume.</p>`;
 
-  results.innerHTML = `<div class="score-summary"><div><span class="eyebrow">RESUME CONTENT CHECK</span><strong class="score-value">${checksPassed}<span>/${checks.length} checks</span></strong></div><span class="score-label">${checksPassed === checks.length ? "All checks met" : `${checks.length - checksPassed} to review`}</span></div>
-    <p class="score-disclaimer">A content checklist—not an ATS score or a prediction of how an employer will rank your application. Education is optional and is not scored here.</p>
+  results.innerHTML = `<div class="score-summary"><div><span class="eyebrow">RESUME READINESS CHECK</span><strong class="score-value">${readinessScore}<span>/100 readiness points</span></strong></div><span class="score-label">${checksPassed} of ${checks.length} checks met</span></div>
+    <p class="score-disclaimer">A local content-readiness checklist—not an employer ATS score or a prediction of how your application will rank. Education is optional and is not scored here.</p>
     <ul class="checklist-results">${checklist}</ul>${jobResult}`;
+  document.querySelector("#ats-score-value").innerHTML = `${readinessScore}<small>/ 100</small>`;
+  const missedCheck = checks.find((check) => !check.passed);
+  document.querySelector("#ats-mini-checks").innerHTML = missedCheck
+    ? `<span>!</span> ${escapeHtml(missedCheck.guidance)}`
+    : "<span>✓</span> All core content checks passed.";
   results.hidden = false;
 }
 
@@ -534,7 +1088,21 @@ function refreshAnalysisIfVisible() {
 }
 
 loadDraft();
+loadShareLink();
 renderSuggestionLists();
-renderEntries("experience");
-renderEntries("education");
+for (const type of ["experience", "education", "projects", "certificates"]) renderEntries(type);
+renderHighlights();
 renderPreview();
+document.querySelectorAll(".section-tabs a").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".section-tabs a").forEach((item) => item.classList.remove("active"));
+    tab.classList.add("active");
+    const sectionId = tab.getAttribute("href").slice(1);
+    const activeSection = document.getElementById(sectionId);
+    const activeTab = activeSection?.dataset.editorTab ||
+      (sectionId === "certificates-form-section" ? "certificates" : "additional");
+    document.querySelectorAll("[data-editor-tab]").forEach((section) => {
+      section.hidden = section.dataset.editorTab !== activeTab;
+    });
+  });
+});

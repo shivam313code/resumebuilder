@@ -4,30 +4,61 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f7fb">
-  <title>ResumePro — Resume builder</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Resume Editor — ResumePro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body>
-  <header class="topbar">
+<body class="resume-editor-page">
+  <header class="editor-topbar">
     <a class="brand" href="/" aria-label="ResumePro home"><span class="brand-mark">R</span><span>ResumePro</span></a>
-    <div class="topbar-center"><span class="status-dot"></span><span id="save-status">All changes saved</span></div>
-    <button class="button button-primary top-download" id="download-button" type="button">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
-      <span>Download PDF</span>
-    </button>
+    <a class="editor-back-link" href="{{ url_for('main.resume_builder') }}">← <span>Back to Dashboard</span></a>
+    <nav class="editor-steps" aria-label="Resume builder steps">
+      <a class="editor-step active" href="#resume-form"><span>1</span> Edit Content</a>
+      <a class="editor-step" href="#customize-section"><span>2</span> Customize</a>
+      <a class="editor-step" href="#resume-preview"><span>3</span> Preview &amp; Download</a>
+    </nav>
+    <div class="editor-top-actions">
+      <div class="topbar-center"><span class="status-dot"></span><span id="save-status">Saved in this browser</span></div>
+      <button class="editor-share-button" id="share-button" type="button">↗ <span>Share</span></button>
+      <div class="download-menu">
+        <button class="button button-primary top-download" id="download-button" type="button" aria-expanded="false" aria-haspopup="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+          <span>Download</span><span aria-hidden="true">⌄</span>
+        </button>
+        <div class="download-options" id="download-options" hidden>
+          <button type="button" id="download-pdf">Download as PDF</button>
+          <button type="button" id="download-docx">Download as DOCX</button>
+        </div>
+      </div>
+    </div>
   </header>
 
+  <div class="editor-app">
+  <aside class="editor-sidebar" aria-label="ResumePro workspace">
+    <a class="sidebar-brand" href="{{ url_for('main.index') }}"><span class="brand-mark">R</span> ResumePro</a>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('main.resume_builder') }}">⌂ <span>Dashboard</span></a>
+      <a href="{{ url_for('main.resume_builder') }}">▤ <span>My Resumes</span></a>
+      <a class="selected" href="#resume-form">▣ <span>Resume Editor</span></a>
+      <a href="#assistant-panel">✧ <span>Writing Assistant</span></a>
+      <a href="{{ url_for('main.resume_builder') }}">▧ <span>Templates</span></a>
+      <a href="#analysis-card">◉ <span>ATS Analysis</span></a>
+      <a href="#cover-letter">✉ <span>Cover Letter</span></a>
+      <a href="#customize-section">⚙ <span>Settings</span></a>
+    </nav>
+    <div class="sidebar-plan"><span>✦ FREE PLAN</span><strong>Make your next move</strong><p>Your draft is saved privately in this browser.</p><a href="#analysis-card">Review your resume →</a></div>
+  </aside>
   <main class="workspace">
     <section class="editor-panel" aria-label="Resume editor">
       <div class="editor-heading">
         <div>
-          <div class="eyebrow">YOUR DOCUMENT</div>
-          <h1>Build your resume</h1>
-          <p>Using {{ template.name }}. Your changes show up instantly.</p>
+          <div class="eyebrow">YOUR DOCUMENT · {{ template.name|upper }}</div>
+          <h1>Edit your resume</h1>
+          <p>Changes appear in your live preview.</p>
         </div>
         <div class="editor-actions">{% if template_change_url is defined %}<a class="text-button" href="{{ template_change_url }}">Change template</a>{% endif %}<button class="text-button" id="reset-button" type="button">Start over</button></div>
       </div>
@@ -35,50 +66,87 @@
       <div class="progress-card">
         <div class="progress-copy"><span>Resume completeness</span><strong id="completion-label">72%</strong></div>
         <div class="progress-track"><span id="completion-bar"></span></div>
-        <div class="progress-hint">A few more details can make your profile shine.</div>
+        <div class="progress-hint" id="completion-hint">A few more details can make your profile shine.</div>
       </div>
 
+      <nav class="section-tabs" aria-label="Resume sections">
+        <a class="active" href="#personal-section">▣ <span>Personal</span></a>
+        <a href="#experience-section">▧ <span>Experience</span></a>
+        <a href="#education-section">⚑ <span>Education</span></a>
+        <a href="#skills-section">✧ <span>Skills</span></a>
+        <a href="#projects-section">▤ <span>Projects</span></a>
+        <a href="#certificates-form-section">▣ <span>Certificates</span></a>
+        <a href="#more-section">☰ <span>Additional</span></a>
+      </nav>
       <form id="resume-form" autocomplete="on">
-        <section class="form-section">
-          <div class="section-title"><span class="section-icon">✳</span><div><h2>Personal details</h2><p>Start with the basics</p></div></div>
+        <input type="hidden" name="highlights" value="4+ years of experience in Data Science and Machine Learning&#10;Expertise in Python, SQL, ML, Deep Learning, and NLP&#10;Experience in end-to-end model development and deployment&#10;Strong problem-solving and analytical skills">
+        <section class="form-section" id="personal-section" data-editor-tab="personal">
+          <div class="section-title"><span class="section-icon">♙</span><div><h2>Personal Information</h2><p>Add your basic details that will appear at the top of your resume.</p></div><button class="assistant-action personal-ai-action" type="button" data-assist="summary">✧ AI Improve</button></div>
           <div class="field-grid">
-            <label class="field field-full">Full name<input name="name" value="Alex Morgan" placeholder="e.g. Alex Morgan"></label>
-            <label class="field field-full">Professional title<input name="title" value="Product Designer" placeholder="e.g. Product Designer"></label>
-            <label class="field">Email<input name="email" type="email" value="alex.morgan@email.com" placeholder="you@email.com"></label>
-            <label class="field">Phone<input name="phone" type="tel" value="+1 (555) 123-4567" placeholder="+1 555 000 0000"></label>
-            <label class="field">Location<input name="location" value="Brooklyn, NY" placeholder="City, Country"></label>
-            <label class="field">Website / LinkedIn<input name="website" value="linkedin.com/in/alexmorgan" placeholder="linkedin.com/in/you"></label>
-            <label class="field field-full">Professional summary<textarea name="summary" rows="4" placeholder="A short introduction that highlights your experience and strengths.">Thoughtful product designer with 6+ years of experience turning complex problems into simple, human-centered digital experiences. I bring teams together around clear ideas and ship work that makes a measurable difference.</textarea></label>
+            <label class="field personal-name-field">Full Name <span class="required-mark">*</span><input name="name" value="Raghav Sharma" placeholder="e.g. Raghav Sharma"></label>
+            <label class="field">Job Title <span class="required-mark">*</span><input name="title" value="Data Scientist" placeholder="e.g. Data Scientist"></label>
+            <label class="field">Email<input name="email" type="email" value="raghav@gmail.com" placeholder="you@email.com"></label>
+            <label class="field">Phone<input name="phone" type="tel" value="+91 98765 43210" placeholder="+91 98765 43210"></label>
+            <label class="field">Location<input name="location" value="Delhi, India" placeholder="City, Country"></label>
+            <label class="field">LinkedIn<input name="website" value="linkedin.com/in/raghav" placeholder="linkedin.com/in/you"></label>
+            <label class="field field-full">Portfolio / Website<input name="portfolio" value="https://raghavsharma.dev" placeholder="https://yourwebsite.com"></label>
+            <div class="profile-photo-control">
+              <span>Profile Photo</span>
+              <div class="profile-photo-frame"><img id="profile-photo-preview" alt="Profile photo preview" hidden><span id="profile-photo-placeholder">👨🏻‍💻</span></div>
+              <label class="photo-upload-button" for="profile-photo-input">▣ Upload Photo<input id="profile-photo-input" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <small>JPG, PNG (Max 2MB)</small>
+            </div>
           </div>
         </section>
 
-        <section class="form-section">
+        <section class="form-section summary-form-section" id="summary-section" data-editor-tab="personal">
+          <div class="section-title summary-title"><span class="section-icon">✧</span><div><h2>Professional Summary</h2><p>Write a brief summary about yourself. This will be the first thing recruiters see.</p></div></div>
+          <div class="summary-actions"><button type="button" data-assist="summary">✧ AI Generate</button><button type="button" class="summary-improve" data-assist="grammar">✦ Improve with AI</button></div>
+          <textarea class="summary-editor" name="summary" maxlength="500" rows="4" placeholder="A short introduction that highlights your experience and strengths.">Data Scientist with 4+ years of experience in building and deploying machine learning models, working with large datasets, and delivering data-driven solutions. Skilled in Python, ML, Deep Learning, NLP, and cloud technologies. Passionate about solving real-world business problems using AI and analytics.</textarea>
+          <div class="summary-count"><span id="summary-count">0</span>/500</div>
+        </section>
+
+        <section class="form-section" id="highlights-section" data-editor-tab="personal">
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-purple">✦</span><div><h2>Key Highlights</h2><p>Add 3–5 key highlights to showcase your strengths.</p></div></div><button class="add-button" id="add-highlight" type="button">＋ Add Highlight</button></div>
+          <div id="highlights-list" class="highlights-list"></div>
+        </section>
+
+        <section class="form-section" id="experience-section" data-editor-tab="experience" hidden>
           <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-blue">↗</span><div><h2>Work experience</h2><p>Search suggestions or type your own details. Dates display as DD-MM-YY.</p></div></div><button class="add-button" id="add-experience" type="button">＋ Add</button></div>
           <div id="experience-list" class="entry-list"></div>
         </section>
 
-        <section class="form-section">
+        <section class="form-section" id="education-section" data-editor-tab="education" hidden>
           <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-purple">⌂</span><div><h2>Education</h2><p>Search degree, school, and location suggestions or enter your own.</p></div></div><button class="add-button" id="add-education" type="button">＋ Add</button></div>
           <div id="education-list" class="entry-list"></div>
         </section>
 
-        <section class="form-section">
-          <div class="section-title"><span class="section-icon icon-green">✦</span><div><h2>Skills</h2><p>Separate each skill with a comma</p></div></div>
-          <label class="field"><span class="sr-only">Skills</span><textarea name="skills" rows="3" placeholder="e.g. Figma, User research, Prototyping">Product design, User research, Prototyping, Figma, Design systems, Workshop facilitation</textarea></label>
+        <section class="form-section" id="skills-section" data-editor-tab="skills" hidden>
+          <div class="section-title"><span class="section-icon icon-green">✦</span><div><h2>Skills</h2><p>List your professional and technical skills.</p></div></div>
+          <label class="field"><span class="sr-only">Skills</span><textarea name="skills" rows="4" placeholder="e.g. Python, SQL, Data analysis">Python, Machine Learning, Deep Learning, SQL, Data Analysis, NLP, AWS / Azure, Docker, FastAPI</textarea></label>
         </section>
 
-        <section class="form-section">
+        <section class="form-section" id="projects-section" data-editor-tab="projects" hidden>
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-blue">▤</span><div><h2>Projects</h2><p>Showcase relevant projects and outcomes.</p></div></div><button class="add-button" id="add-project" type="button">＋ Add</button></div>
+          <div id="projects-list" class="entry-list"></div>
+        </section>
+
+        <section class="form-section" id="certificates-form-section" data-editor-tab="certificates" hidden>
+          <div class="section-title section-title-action"><div class="section-title"><span class="section-icon icon-purple">▣</span><div><h2>Certifications</h2><p>Include credentials relevant to your next role.</p></div></div><button class="add-button" id="add-certificate" type="button">＋ Add</button></div>
+          <div id="certificates-list" class="entry-list"></div>
+        </section>
+
+        <section class="form-section" id="more-section" data-editor-tab="additional" hidden>
           <div class="section-title"><span class="section-icon icon-blue">＋</span><div><h2>More details</h2><p>Optional sections to round out your resume</p></div></div>
           <div class="field-grid">
             <label class="field field-full">Languages<input name="languages" value="English, Hindi" placeholder="e.g. English, Spanish"></label>
-            <label class="field field-full">Certificates<input name="certificates" value="" placeholder="e.g. Project Management Certificate, First Aid"></label>
             <label class="field field-full">Software<input name="software" value="" placeholder="e.g. Figma, Excel, VS Code"></label>
             <label class="field field-full">Interests<input name="interests" value="" placeholder="e.g. Volunteering, Hiking, Reading"></label>
           </div>
         </section>
       </form>
 
-      <section class="analysis-card" aria-labelledby="analysis-heading">
+      <section class="analysis-card" id="analysis-card" aria-labelledby="analysis-heading">
         <div class="section-title">
           <span class="section-icon icon-blue">✓</span>
           <div><h2 id="analysis-heading">ATS check & job match</h2><p>Review your resume structure and compare it with a job description.</p></div>
@@ -91,6 +159,10 @@
         <div id="analysis-results" class="analysis-results" aria-live="polite" hidden></div>
       </section>
 
+      <section class="cover-letter-card" id="cover-letter">
+        <div class="section-title"><span class="section-icon icon-purple">✉</span><div><h2>Cover letter</h2><p>Create a first draft from your resume and target job.</p></div></div>
+        <button class="button button-primary analysis-button" id="cover-letter-button" type="button">Create cover letter draft</button>
+      </section>
       <div class="editor-footer"><span class="footer-lock">♧</span> Your resume is saved privately in this browser.</div>
     </section>
 
@@ -99,25 +171,114 @@
         <div class="preview-label"><span class="preview-eye">◉</span><span>LIVE PREVIEW · {{ template.name }}</span></div>
         <div class="zoom-controls" aria-label="Preview zoom controls"><button type="button" id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-label">100%</span><button type="button" id="zoom-in" aria-label="Zoom in">＋</button></div>
       </div>
+      <section class="customize-panel" id="customize-section" aria-label="Customize your resume">
+        <div class="customize-template"><strong>Template: {{ template.name }}</strong>{% if template_change_url is defined %}<a href="{{ template_change_url }}">Change Template</a>{% endif %}</div>
+        <div class="customize-control">
+          <label>Color theme</label>
+          <div class="theme-swatches" role="group" aria-label="Color themes">
+            <button type="button" class="theme-swatch active" data-theme="#3159b7" style="--swatch:#3159b7" aria-label="Ocean blue" title="Ocean blue"></button>
+            <button type="button" class="theme-swatch" data-theme="#6942c2" style="--swatch:#6942c2" aria-label="Violet" title="Violet"></button>
+            <button type="button" class="theme-swatch" data-theme="#12847b" style="--swatch:#12847b" aria-label="Teal" title="Teal"></button>
+            <button type="button" class="theme-swatch" data-theme="#c24360" style="--swatch:#c24360" aria-label="Rose" title="Rose"></button>
+            <button type="button" class="theme-swatch" data-theme="#242a39" style="--swatch:#242a39" aria-label="Graphite" title="Graphite"></button>
+          </div>
+        </div>
+        <label class="customize-control">Layout
+          <select id="resume-layout"><option value="single">Single column</option><option value="sidebar">Sidebar</option></select>
+        </label>
+        <label class="customize-control">Font
+          <select id="resume-font"><option value="modern">Modern</option><option value="classic">Classic</option><option value="compact">Compact</option></select>
+        </label>
+        <details class="section-visibility">
+          <summary>Sections</summary>
+          <label><input type="checkbox" data-section="summary" checked> Summary</label>
+          <label><input type="checkbox" data-section="highlights" checked> Highlights</label>
+          <label><input type="checkbox" data-section="experience" checked> Experience</label>
+          <label><input type="checkbox" data-section="education" checked> Education</label>
+          <label><input type="checkbox" data-section="skills" checked> Skills</label>
+          <label><input type="checkbox" data-section="projects" checked> Projects</label>
+          <label><input type="checkbox" data-section="languages" checked> Languages</label>
+          <label><input type="checkbox" data-section="certificates" checked> Certificates</label>
+          <label><input type="checkbox" data-section="software" checked> Software</label>
+          <label><input type="checkbox" data-section="interests" checked> Interests</label>
+        </details>
+      </section>
       <div class="paper-wrap" id="paper-wrap">
         <article class="resume-paper template-{{ template.id }}" id="resume-preview">
           <header class="resume-header">
             <div><h2 data-preview="name">Alex Morgan</h2><p class="resume-title" data-preview="title">Product Designer</p></div>
             <div class="resume-contact"><span data-preview="email">alex.morgan@email.com</span><span data-preview="phone">+1 (555) 123-4567</span><span data-preview="location">Brooklyn, NY</span><span data-preview="website">linkedin.com/in/alexmorgan</span></div>
           </header>
-          <section class="resume-section"><h3>Profile</h3><p class="resume-summary" data-preview="summary"></p></section>
-          <section class="resume-section"><h3>Experience</h3><div id="preview-experience"></div></section>
-          <section class="resume-section"><h3>Education</h3><div id="preview-education"></div></section>
-          <section class="resume-section"><h3>Core skills</h3><div class="skill-list" id="preview-skills"></div></section>
-          <section class="resume-section" id="languages-section"><h3>Languages</h3><div class="skill-list" id="preview-languages"></div></section>
-          <section class="resume-section" id="certificates-section"><h3>Certificates</h3><div class="skill-list" id="preview-certificates"></div></section>
-          <section class="resume-section" id="software-section"><h3>Software</h3><div class="skill-list" id="preview-software"></div></section>
-          <section class="resume-section" id="interests-section"><h3>Interests</h3><div class="skill-list" id="preview-interests"></div></section>
+          <div class="resume-pro-layout">
+            <aside class="resume-pro-sidebar">
+              <div class="resume-pro-photo"><img id="resume-photo" alt="" hidden><span id="resume-photo-placeholder">👨🏻‍💻</span></div>
+              <section class="resume-section" data-resume-section="skills"><h3>Skills</h3><div class="skill-list" id="preview-skills"></div></section>
+              <section class="resume-section" data-resume-section="education"><h3>Education</h3><div id="preview-education"></div></section>
+              <section class="resume-section" id="certificates-section" data-resume-section="certificates"><h3>Certifications</h3><div class="skill-list" id="preview-certificates"></div></section>
+              <section class="resume-section" id="languages-section" data-resume-section="languages"><h3>Languages</h3><div class="skill-list" id="preview-languages"></div></section>
+            </aside>
+            <div class="resume-pro-main">
+              <header class="resume-header">
+                <div><h2 data-preview="name">Raghav Sharma</h2><p class="resume-title" data-preview="title">Data Scientist</p></div>
+                <div class="resume-contact"><span data-preview="location"></span><span data-preview="phone"></span><span data-preview="email"></span><span data-preview="website"></span><span data-preview="portfolio"></span></div>
+              </header>
+              <section class="resume-section" data-resume-section="summary"><h3>Professional Summary</h3><p class="resume-summary" data-preview="summary"></p></section>
+              <section class="resume-section" data-resume-section="highlights"><h3>Key Highlights</h3><ul class="preview-highlights" id="preview-highlights"></ul></section>
+              <section class="resume-section" data-resume-section="experience"><h3>Work Experience</h3><div id="preview-experience"></div></section>
+              <section class="resume-section" data-resume-section="projects"><h3>Projects</h3><div id="preview-projects"></div></section>
+              <section class="resume-section" id="software-section" data-resume-section="software"><h3>Software</h3><div class="skill-list" id="preview-software"></div></section>
+              <section class="resume-section" id="interests-section" data-resume-section="interests"><h3>Interests</h3><div class="skill-list" id="preview-interests"></div></section>
+            </div>
+          </div>
           <footer class="resume-page-footer"><span>CURRICULUM VITAE</span><span>01</span></footer>
         </article>
       </div>
       <div class="preview-tip"><span class="tip-sparkle">✦</span><span><strong>Looking good!</strong> Keep your resume clear, focused, and easy to scan.</span></div>
     </section>
+    <aside class="assistant-panel" id="assistant-panel" aria-label="Writing assistant and ATS score">
+      <div class="assistant-robot" aria-hidden="true">🤖</div>
+      <h2>Writing assistant</h2><p>Suggestions use only the content you entered. Review every edit before adding it.</p>
+      <button type="button" class="assistant-action" data-assist="summary">✎ Improve summary</button>
+      <button type="button" class="assistant-action" data-assist="bullets">▤ Strengthen bullets</button>
+      <button type="button" class="assistant-action" data-assist="skills">✧ Review job skills</button>
+      <button type="button" class="assistant-action" data-assist="grammar">✓ Polish wording</button>
+      <button type="button" class="assistant-action" data-assist="shorten">↔ Shorten summary</button>
+      <button type="button" class="assistant-action" data-assist="optimize">◉ Optimize for job</button>
+      <div class="ats-widget">
+        <div class="ats-widget-heading"><span>◎</span> ATS Score</div>
+        <strong id="ats-score-value">—<small>/ 6</small></strong>
+        <div class="ats-score-caption">resume readiness</div>
+        <div id="ats-mini-checks"><span>○</span> Run your resume check to see feedback.</div>
+        <button type="button" id="view-analysis-button">View detailed analysis →</button>
+      </div>
+    </aside>
   </main>
+  </div>
+  <dialog class="editor-dialog" id="share-dialog">
+    <form method="dialog" class="dialog-close-row"><button aria-label="Close dialog">×</button></form>
+    <span class="dialog-icon">↗</span><h2>Share your resume</h2>
+    <p>Create a private, read-only link. Anyone with the link can view this version until you disable it.</p>
+    <div class="share-link-row"><input id="share-link" type="url" readonly aria-label="Shareable resume link"><button id="copy-share-link" type="button">Copy link</button></div>
+    <button class="revoke-share-link" id="refresh-share-link" type="button" hidden>Update link with latest changes</button>
+    <button class="revoke-share-link" id="revoke-share-link" type="button" hidden>Disable this link</button>
+    <p class="dialog-feedback" id="share-feedback" role="status"></p>
+  </dialog>
+  <dialog class="editor-dialog assistant-dialog" id="assistant-dialog">
+    <form method="dialog" class="dialog-close-row"><button aria-label="Close dialog">×</button></form>
+    <span class="dialog-icon">✦</span><h2 id="assistant-dialog-title">Writing suggestion</h2>
+    <p id="assistant-dialog-description">Review this suggested edit. Your original content will not be changed unless you apply it.</p>
+    <textarea id="assistant-suggestion" rows="8" aria-label="Suggested content"></textarea>
+    <div class="dialog-actions"><button type="button" class="dialog-secondary" id="copy-suggestion">Copy text</button><button type="button" class="button button-primary" id="apply-suggestion">Apply suggestion</button></div>
+    <p class="dialog-feedback" id="assistant-feedback" role="status"></p>
+  </dialog>
+  <dialog class="editor-dialog" id="download-success-dialog">
+    <form method="dialog" class="dialog-close-row"><button aria-label="Close dialog">×</button></form>
+    <span class="dialog-icon">✓</span><h2>Your resume is ready</h2>
+    <p>Your resume has been prepared. Take a final look at your content or tailor it for a specific role.</p>
+    <div class="dialog-actions">
+      <button type="button" class="dialog-secondary" id="success-cover-letter">Create cover letter</button>
+      <button type="button" class="button button-primary" id="success-optimize">Optimize for a job</button>
+    </div>
+  </dialog>
 </body>
 </html>

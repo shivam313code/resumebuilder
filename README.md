@@ -1,9 +1,9 @@
 # ResumePro
 
 A lightweight Flask website with a resume builder, PDF-to-Word converter, and
-photo resizer. The resume builder includes a live preview. Your resume
-draft is stored in your browser's local storage; its **Download PDF** button
-opens the browser's print dialog, where you can save it as a PDF.
+photo resizer. The resume builder includes a live preview, appearance controls,
+PDF and DOCX exports, optional share links, and a local resume-readiness check.
+Resume drafts are stored in browser local storage by default.
 
 ## Run on Windows
 
@@ -74,8 +74,8 @@ and `static/style.css` to customize the site.
 
 ## Resume template gallery
 
-The resume builder includes five free, editable layouts: Timeless, Plain,
-Blogger, Pacific, and General ATS. Each design has a visible gallery preview
+The resume builder includes six free, editable layouts: Modern Pro, Timeless,
+Plain, Blogger, Pacific, and General ATS. Each design has a visible gallery preview
 that grows by 25% when hovered. Choose a design to open the live resume editor.
 
 Work experience and education fields provide searchable browser suggestions
@@ -85,15 +85,22 @@ value or select the custom-entry option. Dates can be typed in DD-MM-YY format
 or selected from a calendar; selected dates are shown on the resume in
 DD-MM-YY format. Existing free-form dates remain visible until changed.
 
-## Resume analysis MVP
+## Resume editor and analysis
 
-The resume builder includes a local resume-content checklist and optional job
-description keyword comparison. The checklist reports which visible content
-checks are met; it is not an ATS score. Job matching compares selected words
-and short phrases with the resume fields, normalizing common punctuation and
-the UX/user-research wording. It is a basic text comparison, not an ATS
-simulation or a guarantee of ranking. Users should only add suggested terms
-when they accurately describe their experience.
+Choose color, layout, font, and visible sections in the editor. Add a profile
+photo, highlights, projects, and certifications to the Modern Pro resume. PDF export uses
+the browser print dialog; DOCX export creates an editable Word document. Share
+links are opt-in, read-only snapshots stored in the account database and can
+be revoked from the editor. The latest link is saved in browser storage so it
+can be managed after a reload; creating an updated link disables its previous
+version. Anyone with an active link can view its snapshot.
+
+The local resume-readiness score is calculated from six content checks; it is
+not an employer ATS score or a prediction of ranking. Optional job matching
+compares selected words and phrases with resume fields. Writing suggestions
+reformat or lightly polish user-provided text; cover-letter drafts use only
+resume content and should be reviewed before use. This is not a generative AI
+service. Add suggested terms only when they accurately describe your experience.
 
 ## Accounts and sign-in
 
@@ -102,7 +109,10 @@ New accounts are signed in immediately and sent to the resume template gallery.
 Account records are stored in `instance/resumebuilder.sqlite3` (override the
 path with `RESUMEPRO_DATABASE`). Passwords are stored as Werkzeug password
 hashes. Resume drafts and optional job descriptions remain in browser local
-storage; they are not synced between devices or stored on the server.
+storage and are not synced between devices. Resume data is stored on the server
+only when you explicitly create a share link; disabling the link deletes that
+shared snapshot. Clearing browser storage also clears the locally saved link
+used to manage sharing.
 
 Google and LinkedIn sign-in are optional. Register OAuth applications with each
 provider and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
@@ -121,5 +131,4 @@ account-recovery and verification flows, and configure rate limiting, before
 opening account registration to the public.
 
 The Terms of Service and Privacy Policy pages are initial product notices, not
-legal advice; have them reviewed before public launch. AI-generated content is
-not currently available.
+legal advice; have them reviewed before public launch.

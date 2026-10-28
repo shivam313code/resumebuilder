@@ -4,6 +4,7 @@ import re
 import sqlite3
 import tempfile
 import unittest
+import zipfile
 from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
@@ -81,9 +82,118 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Choose your resume style", response.data)
 
-        response = self.client.get("/resume-builder/plain")
+        response = self.client.get("/resume-builder/modern-pro")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Build your resume", response.data)
+        self.assertIn(b"Edit your resume", response.data)
+
+    def test_resume_editor_renders_customization_and_export_controls(self):
+        self._signup()
+
+        response = self.client.get("/resume-builder/modern-pro")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Color theme", response.data)
+        self.assertIn(b"Modern Pro", response.data)
+        self.assertIn(b"Key Highlights", response.data)
+        self.assertIn(b"Upload Photo", response.data)
+        self.assertIn(b"Projects", response.data)
+        self.assertIn(b"Download as DOCX", response.data)
+        self.assertIn(b"Create cover letter draft", response.data)
+        self.assertIn(b"data-section=", response.data)
+
+    def test_resume_docx_export_returns_valid_document(self):
+        self._signup()
+        token = self._session_csrf_token()
+        response = self.client.post(
+            "/api/resume/export/docx",
+            json={
+                "data": {"name": "Avery Candidate", "title": "Engineer", "summary": "Builds useful tools."},
+                "entries": {
+                    "experience": [],
+                    "education": [],
+                    "projects": [{"name": "ResumePro", "dates": "2026", "description": "Built a resume app."}],
+                    "certificates": [],
+                },
+            },
+            headers={"X-CSRF-Token": token},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.mimetype,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
+            document = archive.read("word/document.xml")
+        self.assertIn(b"Avery Candidate", document)
+        self.assertIn(b"Professional Summary", document)
+        self.assertIn(b"ResumePro", document)
+
+    def test_resume_share_is_private_revocable_and_csrf_protected(self):
+        payload = {
+            "data": {"name": "Avery Candidate", "title": "Engineer", "summary": "Builds useful tools."},
+            "entries": {"experience": [], "education": []},
+        }
+        self.assertEqual(
+            self.client.post("/api/resume/share", json=payload).status_code,
+            401,
+        )
+        self._signup()
+        token = self._session_csrf_token()
+        response = self.client.post(
+            "/api/resume/share",
+            json=payload,
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(response.status_code, 201)
+        share_url = response.get_json()["url"]
+        share_path = share_url.removeprefix("http://localhost")
+        shared = self.client.get(share_path)
+        self.assertEqual(shared.status_code, 200)
+        self.assertIn(b"Avery Candidate", shared.data)
+        revoke_path = share_path.replace("/resume/shared/", "/api/resume/share/")
+        self.assertEqual(self.client.delete(revoke_path).status_code, 400)
+
+        updated_response = self.client.post(
+            "/api/resume/share",
+            json=payload,
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(updated_response.status_code, 201)
+        self.assertEqual(self.client.get(share_path).status_code, 404)
+        updated_share_url = updated_response.get_json()["url"]
+        updated_revoke_path = updated_share_url.removeprefix("http://localhost").replace(
+            "/resume/shared/", "/api/resume/share/"
+        )
+
+        response = self.client.delete(
+            updated_revoke_path,
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get(updated_share_url.removeprefix("http://localhost")).status_code, 404)
+
+    def test_resume_api_rejects_malformed_and_oversized_data(self):
+        self._signup()
+        token = self._session_csrf_token()
+        headers = {"X-CSRF-Token": token}
+        invalid = self.client.post(
+            "/api/resume/share",
+            json={"data": [], "entries": {}},
+            headers=headers,
+        )
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(
+            self.client.post(
+                "/api/resume/share",
+                json={
+                    "data": {"name": "A" * 10_001},
+                    "entries": {"experience": [], "education": []},
+                },
+                headers=headers,
+            ).status_code,
+            400,
+        )
 
     def test_signup_creates_account_and_logs_the_user_in(self):
         response = self._signup()
@@ -100,6 +210,26 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertEqual(name, "Avery Candidate")
         self.assertEqual(email, "avery@example.com")
         self.assertNotEqual(password_hash, "correct horse battery staple")
+
+    def test_signup_from_home_can_open_modern_pro_directly(self):
+        response = self.client.get("/signup?next=/resume-builder/modern-pro")
+        response = self.client.post(
+            "/signup?next=/resume-builder/modern-pro",
+            data={
+                "csrf_token": self._csrf_token(response),
+                "name": "Avery Candidate",
+                "email": "avery@example.com",
+                "password": "correct horse battery staple",
+                "terms": "accepted",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/resume-builder/modern-pro")
+        self.assertEqual(
+            self.client.get("/resume-builder/modern-pro").status_code,
+            200,
+        )
 
     def test_login_after_signup_and_logout(self):
         self._signup()
@@ -241,8 +371,9 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertIn(b"Create a Job-Winning", response.data)
         self.assertIn(b"AI Tools", response.data)
         self.assertIn(b"ATS Score", response.data)
-        self.assertIn(b'href="/signup"', response.data)
-        self.assertIn(b'href="/login"', response.data)
+        self.assertIn(b'href="/signup?next=/resume-builder/modern-pro"', response.data)
+        self.assertIn(b'href="/login?next=/resume-builder/modern-pro"', response.data)
+        self.assertIn(b'href="/resume-builder/modern-pro"', response.data)
         self.assertIn(b'href="/resume-builder"', response.data)
         self.assertIn(b'href="/pdf-to-word"', response.data)
         self.assertIn(b'href="/photo-resize"', response.data)
@@ -251,6 +382,10 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         match = re.search(rb'name="csrf_token" value="([^"]+)"', response.data)
         self.assertIsNotNone(match)
         return match.group(1).decode()
+
+    def _session_csrf_token(self):
+        with self.client.session_transaction() as browser_session:
+            return browser_session["_csrf_token"]
 
     def _signup(self):
         response = self.client.get("/signup")

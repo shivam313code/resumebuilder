@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% if resume %}{{ resume.data.name or "Resume" }} — ResumePro{% else %}Link unavailable — ResumePro{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="shared-resume-page">
+  {% if resume %}
+  <main class="shared-resume">
+    <div class="shared-resume-brand"><span class="brand-mark">R</span> ResumePro <span>Shared resume</span></div>
+    <article class="resume-paper">
+      <div class="resume-pro-layout">
+        <aside class="resume-pro-sidebar">
+          {% if resume.profilePhoto %}<div class="resume-pro-photo"><img src="{{ resume.profilePhoto }}" alt=""></div>{% endif %}
+          {% for field, heading in (("skills", "Skills"), ("education", "Education"), ("certificates", "Certifications"), ("languages", "Languages")) %}
+            {% if resume.data[field] or resume.entries.get(field) %}
+            <section class="resume-section">
+              <h2>{{ heading }}</h2>
+              {% if field == "education" %}
+                {% for entry in resume.entries.education %}<div class="resume-entry"><strong>{{ entry.degree }}</strong><p>{{ entry.school }}{% if entry.dates %} · {{ entry.dates }}{% endif %}</p></div>{% endfor %}
+              {% elif field == "certificates" %}
+                {% for entry in resume.entries.certificates %}<div class="resume-entry"><strong>{{ entry.name }}</strong><p>{{ entry.issuer }}{% if entry.dates %} · {{ entry.dates }}{% endif %}</p></div>{% endfor %}
+              {% else %}<p class="resume-summary">{{ resume.data[field] }}</p>{% endif %}
+            </section>
+            {% endif %}
+          {% endfor %}
+        </aside>
+        <div class="resume-pro-main">
+          <header class="resume-header">
+            <div><h1>{{ resume.data.name }}</h1><p class="resume-title">{{ resume.data.title }}</p></div>
+            <div class="resume-contact">
+              {% for field in ("location", "phone", "email", "website", "portfolio") %}
+                {% if resume.data[field] %}<span>{{ resume.data[field] }}</span>{% endif %}
+              {% endfor %}
+            </div>
+          </header>
+          {% for field, heading in (("summary", "Professional Summary"), ("highlights", "Key Highlights")) %}
+            {% if resume.data[field] %}
+            <section class="resume-section"><h2>{{ heading }}</h2>
+              {% if field == "highlights" %}<ul>{% for item in resume.data.highlights.splitlines() if item.strip() %}<li>{{ item }}</li>{% endfor %}</ul>
+              {% else %}<p class="resume-summary">{{ resume.data.summary }}</p>{% endif %}
+            </section>
+            {% endif %}
+          {% endfor %}
+          {% for section, heading, title_key, organization_key in (("experience", "Work Experience", "role", "company"), ("projects", "Projects", "name", "issuer")) %}
+            {% if resume.entries[section] %}
+            <section class="resume-section">
+              <h2>{{ heading }}</h2>
+              {% for entry in resume.entries[section] %}
+              <div class="resume-entry">
+                <div class="resume-entry-heading"><strong>{{ entry[title_key] }}</strong><span class="resume-entry-date">{{ entry.dates }}</span></div>
+                {% if entry.get(organization_key) %}<p class="resume-entry-subtitle">{{ entry[organization_key] }}</p>{% endif %}
+                {% if entry.description %}<p class="resume-entry-description">{{ entry.description }}</p>{% endif %}
+              </div>
+              {% endfor %}
+            </section>
+            {% endif %}
+          {% endfor %}
+          {% for field, heading in (("software", "Software"), ("interests", "Interests")) %}
+            {% if resume.data[field] %}<section class="resume-section"><h2>{{ heading }}</h2><p class="resume-summary">{{ resume.data[field] }}</p></section>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </article>
+    <footer>Shared privately by its owner · <a href="{{ url_for('main.index') }}">Create your own with ResumePro</a></footer>
+  </main>
+  {% else %}
+  <main class="shared-resume-unavailable">
+    <span class="brand-mark">R</span>
+    <h1>This resume link is unavailable</h1>
+    <p>The owner may have disabled this link, or it may have expired.</p>
+    <a class="button button-primary" href="{{ url_for('main.index') }}">Go to ResumePro</a>
+  </main>
+  {% endif %}
+</body>
+</html>
