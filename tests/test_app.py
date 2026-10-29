@@ -13,6 +13,7 @@ from PIL import Image
 
 from app import create_app
 from app.config import load_config
+from app.extensions import db
 from app.services.pdf_service import convert_pdf_to_docx
 
 
@@ -56,7 +57,13 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.addCleanup(self.temp_dir.cleanup)
         database_path = Path(self.temp_dir.name) / "accounts.sqlite3"
         self.app = create_app("testing", {"DATABASE": str(database_path)})
+        self.addCleanup(self._dispose_database_engine)
         self.client = self.app.test_client()
+
+    def _dispose_database_engine(self):
+        with self.app.app_context():
+            db.session.remove()
+            db.engine.dispose()
 
     def test_main_pages_render(self):
         pages = (
@@ -125,6 +132,26 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertIn(b'data-mode="tailor"', copilot.data)
         self.assertIn(b'id="suggestion-list"', copilot.data)
         self.assertIn(b'id="copilot-checks"', copilot.data)
+
+    def test_account_pages_load_account_scoped_resume_storage(self):
+        self._signup()
+
+        pages = (
+            ("/resume-builder/modern-pro", b"app.js"),
+            ("/dashboard", b"workspace.js"),
+            ("/ai-copilot", b"copilot.js"),
+            ("/settings", b"settings.js"),
+        )
+        for path, page_script in pages:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(b'data-user-id="1"', response.data)
+                self.assertIn(b"resume-storage.js", response.data)
+                self.assertLess(
+                    response.data.index(b"resume-storage.js"),
+                    response.data.index(page_script),
+                )
 
     def test_job_tracker_and_settings_render_functional_controls(self):
         self._signup()
@@ -217,6 +244,9 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         self.assertIn(b"Projects", response.data)
         self.assertIn(b"Download as DOCX", response.data)
         self.assertIn(b"Create cover letter draft", response.data)
+        self.assertIn(b"Save to My Resumes", response.data)
+        self.assertIn(b"Import browser draft", response.data)
+        self.assertIn(b'data-template-id="modern-pro"', response.data)
         self.assertIn(b"data-section=", response.data)
 
     def test_resume_docx_export_returns_valid_document(self):
@@ -310,6 +340,186 @@ class ResumeBuilderRouteTests(unittest.TestCase):
                 },
                 headers=headers,
             ).status_code,
+            400,
+        )
+
+    def test_persistent_resume_crud_is_private_and_supports_account_browser_access(self):
+        self._signup()
+        token = self._session_csrf_token()
+        payload = {
+            "title": "Avery Engineer",
+            "templateId": "modern-pro",
+            "content": {
+                "data": {
+                    "name": "Avery Candidate",
+                    "title": "Engineer",
+                    "email": "avery@example.com",
+                    "summary": "Builds useful tools.",
+                },
+                "entries": {
+                    "experience": [],
+                    "education": [],
+                    "projects": [{"name": "ResumePro", "dates": "2026", "description": "Built an editor."}],
+                    "certificates": [],
+                },
+                "appearance": {
+                    "theme": "#3159b7",
+                    "layout": "sidebar",
+                    "font": "classic",
+                    "sections": {"summary": True, "projects": False},
+                },
+            },
+        }
+        created = self.client.post(
+            "/api/resumes",
+            json=payload,
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(created.status_code, 201)
+        saved = created.get_json()
+        self.assertEqual(saved["version"], 1)
+        self.assertEqual(saved["templateId"], "modern-pro")
+        resume_id = saved["id"]
+        editor_page = self.client.get(
+            f"/resume-builder/modern-pro?resume={resume_id}"
+        )
+        self.assertEqual(editor_page.status_code, 200)
+        self.assertIn(f'data-resume-id="{resume_id}"'.encode(), editor_page.data)
+
+        listed = self.client.get("/api/resumes")
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual([item["id"] for item in listed.get_json()["resumes"]], [resume_id])
+        retrieved = self.client.get(f"/api/resumes/{resume_id}")
+        self.assertEqual(retrieved.get_json()["content"]["appearance"]["layout"], "sidebar")
+        self.assertEqual(
+            retrieved.get_json()["content"]["entries"]["projects"][0]["name"],
+            "ResumePro",
+        )
+
+        another_browser = self.app.test_client()
+        with self.client.session_transaction() as browser_session:
+            owner_id = browser_session["user_id"]
+        with another_browser.session_transaction() as browser_session:
+            browser_session["user_id"] = owner_id
+        cross_browser = another_browser.get(f"/api/resumes/{resume_id}")
+        self.assertEqual(cross_browser.status_code, 200)
+        self.assertEqual(cross_browser.get_json()["title"], "Avery Engineer")
+
+        update_payload = {**payload, "title": "Avery Senior Engineer", "version": 1}
+        updated = self.client.put(
+            f"/api/resumes/{resume_id}",
+            json=update_payload,
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.get_json()["version"], 2)
+        stale = self.client.put(
+            f"/api/resumes/{resume_id}",
+            json=update_payload,
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(stale.status_code, 409)
+
+        duplicate = self.client.post(
+            f"/api/resumes/{resume_id}/duplicate",
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(duplicate.status_code, 201)
+        self.assertEqual(duplicate.get_json()["title"], "Avery Senior Engineer (Copy)")
+        self.assertEqual(duplicate.get_json()["version"], 1)
+
+        other_client = self.app.test_client()
+        signup_page = other_client.get("/signup")
+        other_signup = other_client.post(
+            "/signup",
+            data={
+                "csrf_token": self._csrf_token(signup_page),
+                "name": "Other Candidate",
+                "email": "other-resume@example.com",
+                "password": "another secure password 123",
+                "terms": "accepted",
+            },
+        )
+        self.assertEqual(other_signup.status_code, 302)
+        other_token = self._session_csrf_token_for(other_client)
+        for response in (
+            other_client.get(f"/api/resumes/{resume_id}"),
+            other_client.put(
+                f"/api/resumes/{resume_id}",
+                json={**payload, "version": 2},
+                headers={"X-CSRF-Token": other_token},
+            ),
+            other_client.post(
+                f"/api/resumes/{resume_id}/duplicate",
+                headers={"X-CSRF-Token": other_token},
+            ),
+            other_client.delete(
+                f"/api/resumes/{resume_id}",
+                headers={"X-CSRF-Token": other_token},
+            ),
+        ):
+            self.assertEqual(response.status_code, 404)
+
+        deleted = self.client.delete(
+            f"/api/resumes/{resume_id}",
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(self.client.get(f"/api/resumes/{resume_id}").status_code, 404)
+
+    def test_persistent_resume_apis_require_authentication_and_csrf(self):
+        self.assertEqual(self.client.get("/api/resumes").status_code, 401)
+        self.assertEqual(self.client.get("/api/resumes/1").status_code, 401)
+        self.assertEqual(self.client.post("/api/resumes", json={}).status_code, 401)
+        self._signup()
+        payload = {
+            "title": "Candidate Resume",
+            "templateId": "modern-pro",
+            "content": {"data": {}, "entries": {}},
+        }
+        self.assertEqual(self.client.post("/api/resumes", json=payload).status_code, 400)
+        token = self._session_csrf_token()
+        created = self.client.post(
+            "/api/resumes",
+            json=payload,
+            headers={"X-CSRF-Token": token},
+        )
+        resume_id = created.get_json()["id"]
+        self.assertEqual(
+            self.client.put(
+                f"/api/resumes/{resume_id}",
+                json={**payload, "version": 1},
+            ).status_code,
+            400,
+        )
+        self.assertEqual(self.client.post(f"/api/resumes/{resume_id}/duplicate").status_code, 400)
+        self.assertEqual(self.client.delete(f"/api/resumes/{resume_id}").status_code, 400)
+
+    def test_persistent_resume_rejects_invalid_template_and_content(self):
+        self._signup()
+        headers = {"X-CSRF-Token": self._session_csrf_token()}
+        payload = {
+            "title": "Candidate Resume",
+            "templateId": "unknown-template",
+            "content": {"data": {}, "entries": {}},
+        }
+        self.assertEqual(
+            self.client.post("/api/resumes", json=payload, headers=headers).status_code,
+            400,
+        )
+        payload["templateId"] = "modern-pro"
+        payload["content"] = {"data": [], "entries": {}}
+        self.assertEqual(
+            self.client.post("/api/resumes", json=payload, headers=headers).status_code,
+            400,
+        )
+        payload["content"] = {
+            "data": {},
+            "entries": {},
+            "appearance": {"layout": []},
+        }
+        self.assertEqual(
+            self.client.post("/api/resumes", json=payload, headers=headers).status_code,
             400,
         )
 
@@ -509,6 +719,11 @@ class ResumeBuilderRouteTests(unittest.TestCase):
         with self.client.session_transaction() as browser_session:
             return browser_session["_csrf_token"]
 
+    @staticmethod
+    def _session_csrf_token_for(client):
+        with client.session_transaction() as browser_session:
+            return browser_session["_csrf_token"]
+
     def _signup(self):
         response = self.client.get("/signup")
         return self.client.post(
@@ -616,6 +831,51 @@ class ResumeBuilderRouteTests(unittest.TestCase):
 
 
 class ApplicationConfigTests(unittest.TestCase):
+    def test_testing_defaults_to_an_isolated_sqlite_database(self):
+        with patch.dict(os.environ, {}, clear=True):
+            config = load_config("testing")
+
+        self.assertEqual(config["DB_BACKEND"], "sqlite")
+        self.assertEqual(config["DATABASE"], ":memory:")
+        self.assertEqual(config["SQLALCHEMY_DATABASE_URI"], "sqlite:///:memory:")
+        self.assertEqual(config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["timeout"], 20)
+
+    def test_legacy_sqlite_path_remains_supported(self):
+        path = str(Path(tempfile.gettempdir()) / "resumepro-legacy.sqlite3")
+        with patch.dict(os.environ, {"RESUMEPRO_DATABASE": path}, clear=True):
+            config = load_config("development")
+
+        self.assertEqual(config["DB_BACKEND"], "sqlite")
+        self.assertEqual(config["DATABASE"], path)
+        self.assertTrue(config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"))
+
+    def test_database_url_uses_psycopg_without_exposing_credentials(self):
+        with patch.dict(
+            os.environ,
+            {
+                "DATABASE_URL": "postgresql://resume_user:private-value@localhost/resume",
+                "FLASK_SECRET_KEY": "test-key",
+            },
+            clear=True,
+        ):
+            config = load_config("production")
+
+        self.assertEqual(config["DB_BACKEND"], "postgresql")
+        self.assertTrue(
+            config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql+psycopg://")
+        )
+        self.assertEqual(config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_size"], 5)
+        self.assertEqual(config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_timeout"], 30)
+
+    def test_invalid_database_url_is_rejected_without_echoing_it(self):
+        with patch.dict(
+            os.environ,
+            {"DATABASE_URL": "mysql://user:private-value@localhost/db"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "PostgreSQL or SQLite"):
+                load_config("development")
+
     def test_development_debug_is_disabled_by_default(self):
         with patch.dict(os.environ, {}, clear=True):
             config = load_config("development")
@@ -635,10 +895,23 @@ class ApplicationConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "FLASK_SECRET_KEY"):
                 load_config("production")
 
+    def test_production_requires_an_explicit_database_configuration(self):
+        with patch.dict(
+            os.environ,
+            {"FLASK_SECRET_KEY": "production-secret"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "DATABASE_URL"):
+                load_config("production")
+
     def test_production_ignores_debug_opt_in_and_uses_secure_cookies(self):
         with patch.dict(
             os.environ,
-            {"FLASK_SECRET_KEY": "production-secret", "FLASK_DEBUG": "true"},
+            {
+                "FLASK_SECRET_KEY": "production-secret",
+                "DATABASE_URL": "postgresql+psycopg://user:password@localhost/resume",
+                "FLASK_DEBUG": "true",
+            },
             clear=True,
         ):
             config = load_config("production")
@@ -646,6 +919,21 @@ class ApplicationConfigTests(unittest.TestCase):
         self.assertFalse(config["DEBUG"])
         self.assertTrue(config["SESSION_COOKIE_SECURE"])
         self.assertEqual(config["SECRET_KEY"], "production-secret")
+
+    def test_production_keeps_explicit_legacy_sqlite_compatibility(self):
+        path = str(Path(tempfile.gettempdir()) / "resumepro-production.sqlite3")
+        with patch.dict(
+            os.environ,
+            {
+                "FLASK_SECRET_KEY": "production-secret",
+                "RESUMEPRO_DATABASE": path,
+            },
+            clear=True,
+        ):
+            config = load_config("production")
+
+        self.assertEqual(config["DB_BACKEND"], "sqlite")
+        self.assertEqual(config["DATABASE"], path)
 
     def test_unknown_environment_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "APP_ENV"):
@@ -697,6 +985,22 @@ class ApplicationFactoryTests(unittest.TestCase):
         app = create_app("testing", {"MAX_CONTENT_LENGTH": 1024})
 
         self.assertEqual(app.config["MAX_CONTENT_LENGTH"], 1024)
+
+    def test_factory_configures_postgresql_without_creating_tables_at_startup(self):
+        app = create_app(
+            "testing",
+            {
+                "SQLALCHEMY_DATABASE_URI": (
+                    "postgresql+psycopg://user:placeholder@localhost/resumepro"
+                )
+            },
+        )
+
+        self.assertEqual(app.config["DB_BACKEND"], "postgresql")
+        self.assertEqual(app.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_size"], 5)
+        with app.app_context():
+            self.assertEqual(db.engine.dialect.name, "postgresql")
+            db.engine.dispose()
 
     def test_upload_size_error_keeps_tool_specific_page(self):
         app = create_app("testing", {"MAX_CONTENT_LENGTH": 64})

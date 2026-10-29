@@ -1,6 +1,7 @@
 (() => {
   const userId = document.body.dataset.userId;
   const storageKey = `forma-settings-${userId}`;
+  const resumeStorage = window.ResumeDraftStorage;
   const profileForm = document.querySelector("#profile-form");
   const profileFeedback = document.querySelector("#settings-feedback");
   const preferencesFeedback = document.querySelector("#preferences-feedback");
@@ -107,8 +108,7 @@
   function renderCompletion() {
     let draft = null;
     try {
-      const saved = localStorage.getItem("forma-resume-draft");
-      draft = saved ? JSON.parse(saved) : null;
+      draft = resumeStorage.readDraft();
     } catch (error) {
       console.error("Unable to read the local resume draft for profile completion.", error);
     }
@@ -256,13 +256,12 @@
 
   document.querySelector("#export-local-data").addEventListener("click", () => {
     try {
-      const data = {
+      const data = resumeStorage.buildExportData({
         profile: settings.profile,
         preferences: settings.preferences,
         jobApplications: JSON.parse(localStorage.getItem(`forma-job-tracker-${userId}`) || "[]"),
-        resumeDraft: JSON.parse(localStorage.getItem("forma-resume-draft") || "null"),
         exportedAt: new Date().toISOString()
-      };
+      });
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -270,7 +269,7 @@
       link.download = "resumepro-local-data.json";
       link.click();
       URL.revokeObjectURL(url);
-      showMessage(privacyFeedback, "A copy of your local profile, applications, and resume was downloaded.");
+      showMessage(privacyFeedback, "A copy of this account's profile, preferences, applications, and resume was downloaded.");
     } catch (error) {
       console.error("Unable to export local ResumePro data.", error);
       showMessage(privacyFeedback, "Could not export local data. Check that the saved data is valid and try again.", true);
@@ -278,16 +277,17 @@
   });
 
   document.querySelector("#clear-local-data").addEventListener("click", () => {
-    if (!window.confirm("Clear this browser's saved profile, preferences, and job applications? This cannot be undone. Your ResumePro account and resume draft will not be deleted.")) return;
+    if (!window.confirm("Clear this account's saved profile, preferences, resume draft, and job applications from this browser? This cannot be undone. Your account, any unassigned legacy draft, and active share links will not be deleted.")) return;
     try {
       localStorage.removeItem(storageKey);
       localStorage.removeItem(`forma-job-tracker-${userId}`);
+      resumeStorage.clearDraft();
       settings = defaults;
       populateForm();
       document.body.dataset.theme = defaults.preferences.theme;
       window.dispatchEvent(new CustomEvent("workspace-preferences-updated", { detail: defaults.preferences }));
       renderCompletion();
-      showMessage(privacyFeedback, "Local profile, preferences, and job applications were cleared.");
+      showMessage(privacyFeedback, "This account's local profile, preferences, resume draft, and job applications were cleared.");
     } catch (error) {
       console.error("Unable to clear local ResumePro data.", error);
       showMessage(privacyFeedback, "Could not clear local data in this browser.", true);
@@ -300,6 +300,31 @@
       link.hidden = Boolean(query) && !link.textContent.toLowerCase().includes(query);
     });
   });
+  const legacyDraftNotice = document.querySelector("#legacy-draft-notice");
+  const importLegacyDraftButton = document.querySelector("#import-legacy-draft");
+  try {
+    const legacyDraftExists = resumeStorage.hasLegacyDraft();
+    legacyDraftNotice.hidden = !legacyDraftExists;
+    importLegacyDraftButton.hidden = !legacyDraftExists || resumeStorage.hasCurrentDraft();
+  } catch (error) {
+    console.error("Unable to check for an unassigned legacy resume draft.", error);
+  }
+  importLegacyDraftButton.addEventListener("click", () => {
+    if (!window.confirm("This older draft has no account information and will be assigned to the signed-in account. Import it only if you are certain it belongs to you. Continue?")) return;
+    try {
+      if (!resumeStorage.importLegacyDraft()) {
+        showMessage(privacyFeedback, "No unassigned legacy draft was found.", true);
+        return;
+      }
+      legacyDraftNotice.hidden = true;
+      importLegacyDraftButton.hidden = true;
+      renderCompletion();
+      showMessage(privacyFeedback, "The unassigned draft was imported into this account.");
+    } catch (error) {
+      console.error("Unable to import the unassigned legacy resume draft.", error);
+      showMessage(privacyFeedback, error.message || "Could not import the unassigned draft.", true);
+    }
+  });
   document.querySelectorAll(".settings-menu a[href^='#']").forEach((link) => {
     link.addEventListener("click", () => {
       document.querySelectorAll(".settings-menu a").forEach((item) => item.classList.toggle("active", item === link));
@@ -311,8 +336,7 @@
   populateForm();
   const draft = (() => {
     try {
-      const saved = localStorage.getItem("forma-resume-draft");
-      return saved ? JSON.parse(saved) : null;
+      return resumeStorage.readDraft();
     } catch (error) {
       console.error("Unable to read the resume draft for profile defaults.", error);
       return null;

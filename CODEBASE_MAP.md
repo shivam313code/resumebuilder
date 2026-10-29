@@ -11,26 +11,32 @@ Navigation index for the current Flask project. Verified by inspecting imports, 
 | `wsgi.py` | WSGI import target that exposes `application.app` for Gunicorn. |
 | `RES_Builder.py` | Local launcher that constructs the application through `app.create_app()`. |
 | `app/` | Flask application package: factory, configuration, blueprints, and file-processing services. |
-| `app/config.py` | Environment-aware configuration; validates `APP_ENV`, requires production `FLASK_SECRET_KEY`, and keeps production debug disabled. |
-| `app/auth.py` | SQLite user accounts, password hashing, CSRF-checked authentication, sessions, and optional Google/LinkedIn OAuth. |
-| `app/routes/main.py` | Homepage, protected template gallery, and protected resume editor routes. |
+| `app/config.py` | Environment-aware PostgreSQL/SQLite configuration; validates `APP_ENV`, requires production `FLASK_SECRET_KEY`, and keeps production debug disabled. |
+| `app/extensions.py` | Shared Flask-SQLAlchemy and Flask-Migrate extensions. |
+| `app/models/` | SQLAlchemy models for users, OAuth identities, persistent resumes, and shared-resume snapshots. |
+| `app/auth.py` | SQLAlchemy-backed accounts, password hashing, CSRF-checked authentication, sessions, and optional Google/LinkedIn OAuth. |
+| `app/routes/main.py` | Homepage, protected editor/dashboard, ownership-checked resume CRUD, DOCX export, and share routes. |
 | `app/routes/tools.py` | PDF-to-Word and photo-resize HTTP routes, input checks, responses, and error messaging. |
 | `app/services/pdf_service.py` | Temporary-file PDF-to-DOCX conversion. |
 | `app/services/image_service.py` | Image validation, resize, and output-format handling. |
 | `templates/` | Jinja HTML pages rendered by Flask. |
 | `static/` | Shared CSS and resume-builder JavaScript. |
+| `migrations/versions/82b41d7a09c3_add_persistent_resumes.py` | Adds owner-scoped resume records and concurrency versions. |
 | `tests/test_app.py` | Standard-library `unittest` regression tests using Flask's test client. |
-| `requirements.txt` | Direct Python package dependencies. |
+| `tests/test_database.py`, `tests/test_postgres.py` | SQLite ORM contracts and opt-in PostgreSQL migration, CRUD, and ownership integration coverage. |
+| `tests/test_data_migration.py` | Safe data-import behavior tests using a SQLite destination; not PostgreSQL integration coverage. |
+| `scripts/migrate_sqlite_to_postgres.py` | Explicit one-time importer for users, OAuth identities, and share snapshots. |
+| `requirements.txt` | Runtime packages, including SQLAlchemy, Flask-Migrate, and psycopg. |
 | `requirements-dev.txt` | Includes runtime requirements plus pytest and Ruff for development/CI. |
 | `requirements-prod.txt` | Includes runtime requirements plus Gunicorn for Linux deployment. |
 | `pyproject.toml` | Pytest discovery and Ruff lint configuration. |
 | `README.md` | Setup instructions, feature summary, and current product limitations. |
 | `ARCHITECTURE.md` | Product and production architecture recommendations. |
 | `.github/copilot-instructions.md` | Persistent repository-scoped Copilot navigation and editing guidance. |
-| `.github/workflows/ci.yml` | GitHub Actions workflow running Ruff and pytest on pushes and pull requests. |
+| `.github/workflows/ci.yml` | GitHub Actions workflow running Ruff, Python tests, and Node storage tests on pushes and pull requests. |
 | `.vscode/settings.json` | Workspace Python environment-manager preferences and search exclusions. |
 | `.venv/`, `__pycache__/` | Local environment and generated Python cache; not application source. |
-| `migrations/`, `.github/instructions/` | Not present at the time of inspection. |
+| `migrations/` | Flask-Migrate/Alembic environment with account/share foundation and persistent-resume revisions. |
 
 ## Entry points and HTTP routes
 
@@ -44,6 +50,12 @@ Navigation index for the current Flask project. Verified by inspecting imports, 
 | `GET /auth/<provider>`, callback | `auth.oauth_login`, `auth.oauth_callback` | Optional Google/LinkedIn OAuth; enabled only when provider credentials are configured. |
 | `GET /resume-builder` | `main.resume_builder` | Requires sign-in and renders the template gallery. |
 | `GET /resume-builder/<template_id>` | `main.edit_resume` | Requires sign-in and renders the selected editor, which loads `static/app.js` and `static/style.css`. |
+| `GET /api/resumes` | `main.list_resumes` | Lists only the signed-in user's resumes. |
+| `POST /api/resumes` | `main.create_resume` | CSRF-checked validated resume creation. |
+| `GET /api/resumes/<id>` | `main.get_resume` | Retrieves only an owned resume; non-owned IDs return 404. |
+| `PUT /api/resumes/<id>` | `main.update_resume` | CSRF-checked, ownership-scoped optimistic update. |
+| `POST /api/resumes/<id>/duplicate` | `main.duplicate_resume` | CSRF-checked copy of an owned resume. |
+| `DELETE /api/resumes/<id>` | `main.delete_resume` | CSRF-checked deletion of an owned resume. |
 | `GET /terms`, `GET /privacy` | `auth.terms`, `auth.privacy` | Renders initial account policy notices. |
 | `GET, POST /pdf-to-word` | `tools.pdf_to_word` | Renders its template on GET; validates requests and calls `pdf_service.convert_pdf_to_docx` on POST. |
 | `GET, POST /photo-resize` | `tools.photo_resize` | Renders its template on GET; validates requests and calls `image_service.resize_image` on POST. |
@@ -55,19 +67,20 @@ The tool templates submit multipart forms to the existing Flask URL paths. Uploa
 
 - `templates/home.html`: Homepage and links to the resume builder and file tools using Flask `url_for`.
 - `templates/index.html`: Resume editor and live-preview structure; loads `static/app.js`.
-- `static/app.js`: Resume form state, experience/education entry rendering, live preview, completeness, browser-local draft persistence, print action, and optional job-description keyword comparison.
+- `static/app.js`: Resume form state, live preview, account autosave/version handling, explicit browser-draft import, DOCX/print export, and job-description comparison.
+- `static/workspace.js`: Account resume listing, search, duplicate/delete actions, and dashboard progress.
 - `templates/pdf_to_word.html`, `templates/photo_resize.html`: Upload forms and tool-specific UI.
 - `static/style.css`: Shared styles, responsive layouts, tool pages, and print styling.
 
 ## Data, configuration, and dependencies
 
-- **Data models/database:** Account names, emails, password hashes, and optional provider identities are stored in SQLite at `instance/resumebuilder.sqlite3` by default. Resume and job-description drafts remain in browser `localStorage`; the server does not persist resumes.
-- **Configuration:** `app/config.py` selects development/testing/production using `APP_ENV`. Production requires `FLASK_SECRET_KEY`, disables debug, and enables secure session cookies. Google/LinkedIn OAuth are optional via provider client environment variables. `RESUMEPRO_DATABASE` overrides the SQLite file path; upload-size limit is 20 MB.
-- **Direct packages:** Flask, Authlib, Requests, `pdf2docx`, and Pillow, as declared in `requirements.txt`.
+- **Data models/database:** SQLAlchemy supports PostgreSQL via `DATABASE_URL` and SQLite via the default `instance/resumebuilder.sqlite3` or legacy `RESUMEPRO_DATABASE`. Account, OAuth, persistent resume, and share data use the same ORM. Browser drafts are only imported to an account explicitly.
+- **Configuration:** `app/config.py` selects development/testing/production using `APP_ENV`; testing defaults to in-memory SQLite. Production requires `FLASK_SECRET_KEY`, disables debug, and enables secure session cookies. Google/LinkedIn OAuth are optional via provider client environment variables; upload-size limit is 20 MB.
+- **Direct packages:** Flask, Flask-SQLAlchemy, Flask-Migrate, psycopg, Authlib, Requests, `pdf2docx`, and Pillow, as declared in `requirements.txt`.
 - **Other imports:** Python standard-library modules for I/O, logging, temporary directories, secrets, and warnings.
-- **Tests:** `tests/test_app.py` covers app-factory route registration, signup/login/logout, CSRF and input validation, protected resume routes, rendered pages, upload-size handling, PDF conversion, photo resizing, and configuration. Run with `python -m pytest`; test cases use `unittest.TestCase`.
+- **Tests:** `tests/test_app.py` covers routes and auth; database/data-import tests cover SQLite contracts. `tests/test_postgres.py` requires `RESUMEPRO_TEST_DATABASE_URL` and is skipped when unset. SQLite coverage does not validate PostgreSQL.
 - **CI/lint:** `.github/workflows/ci.yml` runs `python -m ruff check .` and `python -m pytest`. Development tools are declared in `requirements-dev.txt`.
-- **Migrations:** No database migrations were found.
+- **Migrations:** Run `flask --app wsgi db upgrade` before PostgreSQL deployment. SQLite compatibility creates missing tables but does not automatically stamp or migrate the existing SQLite database.
 
 ## Navigation and indexing notes
 

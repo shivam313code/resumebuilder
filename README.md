@@ -3,7 +3,8 @@
 A lightweight Flask website with a resume builder, PDF-to-Word converter, and
 photo resizer. The resume builder includes a live preview, appearance controls,
 PDF and DOCX exports, optional share links, and a local resume-readiness check.
-Resume drafts are stored in browser local storage by default.
+Resumes are stored in the signed-in account and can be reopened across browsers.
+Unimported browser drafts remain account-scoped local recovery copies.
 
 ## Run on Windows
 
@@ -34,12 +35,17 @@ commands using the environment's executable directly:
 local development when you need the debugger. Production always disables debug
 mode and requires a stable `FLASK_SECRET_KEY` supplied by the deployment
 environment or secrets manager. Do not commit production secrets.
+Production startup also requires an explicit `DATABASE_URL` or legacy
+`RESUMEPRO_DATABASE` setting so it cannot silently fall back to a local
+development database. Use PostgreSQL for new production deployments; the
+explicit legacy SQLite path remains available for backward compatibility.
 
 For example, in PowerShell before starting a production WSGI server:
 
 ```powershell
 $env:APP_ENV = "production"
 $env:FLASK_SECRET_KEY = "<set-this-through-your-deployment-secret-store>"
+$env:DATABASE_URL = "postgresql+psycopg://resumepro:<password>@127.0.0.1:5432/resumepro"
 ```
 
 Install the production server dependency on the Linux deployment host with
@@ -53,6 +59,71 @@ gunicorn --bind 0.0.0.0:8000 wsgi:app
 Keep the reverse proxy or managed platform responsible for HTTPS and forward
 requests to Gunicorn. Do not expose Flask's development server publicly.
 
+## Database configuration and migrations
+
+The application uses SQLAlchemy for account, OAuth-identity, persistent resume,
+and shared-resume records. PostgreSQL uses the `psycopg` driver. When `DATABASE_URL` is set, it
+takes precedence over the legacy `RESUMEPRO_DATABASE` SQLite file path; plain
+`postgresql://` URLs are normalized to `postgresql+psycopg://`. If neither
+variable is set, development continues to use
+`instance/resumebuilder.sqlite3`. Testing defaults to an isolated in-memory
+SQLite database. Production still requires `FLASK_SECRET_KEY`; PostgreSQL
+credentials belong only in the environment or a secret manager.
+
+For local PostgreSQL, create an empty database and provide its URL before
+running migrations and the app:
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://resumepro:<password>@127.0.0.1:5432/resumepro"
+python -m flask --app wsgi db upgrade
+python RES_Builder.py
+```
+
+Run `flask --app wsgi db upgrade` as a controlled deployment/release step
+before starting Gunicorn. This applies the account/share foundation and the
+persistent-resume schema. Gunicorn workers do not run migrations at startup.
+Generate revisions with `flask --app wsgi db migrate -m "short migration summary"`
+and review the generated migration before committing it.
+
+SQLite remains supported through SQLAlchemy. Its existing database file is not
+replaced or copied; SQLite schema creation at app startup creates missing
+tables, including the new resumes table, but does not migrate existing data.
+Do not run the initial migration against an existing SQLite account database:
+it already has the account tables and is not stamped with the Alembic revision.
+PostgreSQL uses migrations and does not create tables automatically.
+Application startup never copies data.
+
+To move account and share data, first make and verify a SQLite backup, create a
+fresh PostgreSQL database, and run its migrations. Then set `DATABASE_URL` to
+that PostgreSQL destination and run the standalone importer against the backup:
+
+```powershell
+New-Item -ItemType Directory -Path .\backups -ErrorAction SilentlyContinue
+$backup = Join-Path .\backups ("resumebuilder-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".sqlite3")
+if (Test-Path $backup) { throw "Choose a new backup filename; existing files are never overwritten." }
+sqlite3 .\instance\resumebuilder.sqlite3 ".backup '$backup'"
+sqlite3 $backup "PRAGMA integrity_check;"
+python scripts/migrate_sqlite_to_postgres.py --source $backup
+```
+
+Proceed only when the backup integrity check prints `ok`.
+The importer opens the source read-only, preserves user and OAuth IDs, password
+hashes, hashed share-token keys, and snapshot JSON, and refuses a populated
+destination. It reports counts and never prints credentials or record contents.
+Keep the source and backup unchanged until destination counts and application
+behavior have been verified. Restore the backup before retrying a failed import.
+
+PostgreSQL integration tests use an isolated temporary schema and require a test
+database URL with schema-creation privileges:
+
+```powershell
+$env:RESUMEPRO_TEST_DATABASE_URL = "postgresql+psycopg://resumepro:<password>@127.0.0.1:5432/resumepro_test"
+python -m pytest tests/test_postgres.py
+```
+
+When that variable is unset, PostgreSQL integration tests are reported as
+skipped; SQLite tests are not a substitute for PostgreSQL verification.
+
 ## Tests and lint
 
 Install development tools and run the CI checks locally:
@@ -61,9 +132,11 @@ Install development tools and run the CI checks locally:
 python -m pip install -r requirements-dev.txt
 python -m pytest
 python -m ruff check .
+node --test tests/test_resume_storage.js
 ```
 
-GitHub Actions runs the same lint and test commands on pushes and pull requests.
+GitHub Actions runs the lint, Python tests, and resume-storage tests on pushes
+and pull requests.
 
 Uploads are limited to 20 MB. PDF conversion uses `pdf2docx`, and photo resizing
 uses Pillow. Supported photo formats are JPG, PNG, and WebP; the selected
@@ -104,10 +177,21 @@ service. Add suggested terms only when they accurately describe your experience.
 
 ## Dashboard and AI Copilot
 
-After signing in, use `/dashboard` for the workspace overview and `/ai-copilot`
-to review local writing suggestions, resume-readiness checks, and job-description
-keyword overlap. The dashboard and Copilot read the current resume draft from
-this browser; they do not sync drafts between devices. Suggestions are generated
+After signing in, use `/dashboard` to manage resumes saved to your account.
+Resume content is stored in the configured SQL database and loads across
+browsers for the same account. The editor saves explicitly when a new resume is
+created, then saves later edits automatically; the version field rejects stale
+concurrent updates. DOCX, print-to-PDF, and share snapshots continue to use the
+editor's current validated content.
+
+Pre-existing drafts in account-scoped browser storage are never silently
+assigned to the server. Open the editor and use **Import browser draft** to
+choose one explicitly. Browser-global legacy drafts have no ownership metadata;
+the editor requires an additional confirmation before importing, so import one
+only when you know it belongs to the signed-in account. Keep a backup of local
+drafts before clearing browser data. The dashboard and Copilot may still use the
+current browser draft for local analysis; job applications and Copilot data do
+not sync between devices. Suggestions are generated
 in the browser from text you provide, do not call an AI service, and must be
 reviewed before applying. Cover-letter drafts and interview practice notes remain
 in browser storage as well.
@@ -127,8 +211,9 @@ validated against the current account password (OAuth-only accounts may set
 their first password). Profile visibility is only a local preference; the app
 does not publish public recruiter profiles. Paid billing, email/push
 notifications, external job-board integrations, and language translations are
-not configured. Local profile and job data can be exported or cleared from
-Settings.
+not configured. This account's local profile, preferences, resume draft, and
+job applications can be exported or cleared from Settings. Unassigned legacy
+drafts are excluded unless explicitly imported.
 
 ## Accounts and sign-in
 
@@ -139,10 +224,15 @@ dashboard; choosing a template remains available from the dashboard or at
 Account records are stored in `instance/resumebuilder.sqlite3` (override the
 path with `RESUMEPRO_DATABASE`). Passwords are stored as Werkzeug password
 hashes. Resume drafts and optional job descriptions remain in browser local
-storage and are not synced between devices. Resume data is stored on the server
-only when you explicitly create a share link; disabling the link deletes that
-shared snapshot. Clearing browser storage also clears the locally saved link
-used to manage sharing.
+storage and are not synced between devices. Drafts are separated by the
+signed-in account on that browser. Use **Import browser draft** in the editor
+to explicitly save a browser draft to the account database. Older browser-global
+drafts have no account ownership metadata and are never assigned automatically;
+the editor requires confirmation before importing one. Resume records are
+available across browsers after signing into the same account. Share links
+remain independent read-only snapshots and can be revoked in the editor.
+Clearing local profile data does not delete account resumes or active share
+links.
 
 Google and LinkedIn sign-in are optional. Register OAuth applications with each
 provider and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,

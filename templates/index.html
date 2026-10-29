@@ -11,9 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='resume-storage.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body class="resume-editor-page" data-user-id="{{ current_user.id }}" data-template-name="{{ template.name }}">
+<body class="resume-editor-page" data-user-id="{{ current_user.id }}" data-template-name="{{ template.name }}" data-template-id="{{ template.id }}" data-resume-id="{{ request.args.get('resume', '') }}">
   <header class="editor-topbar">
     <a class="brand" href="/" aria-label="ResumePro home"><span class="brand-mark">R</span><span>ResumePro</span></a>
     <a class="editor-back-link" href="{{ url_for('main.dashboard') }}">← <span>Back to Dashboard</span></a>
@@ -23,7 +24,6 @@
       <a class="editor-step" href="#resume-preview"><span>3</span> Preview &amp; Download</a>
     </nav>
     <div class="editor-top-actions">
-      <div class="topbar-center"><span class="status-dot"></span><span id="save-status">Saved in this browser</span></div>
       <button class="editor-share-button" id="share-button" type="button">↗ <span>Share</span></button>
       <div class="download-menu">
         <button class="button button-primary top-download" id="download-button" type="button" aria-expanded="false" aria-haspopup="true">
@@ -51,7 +51,7 @@
       <a href="#cover-letter">✉ <span>Cover Letter</span></a>
       <a href="#customize-section">⚙ <span>Settings</span></a>
     </nav>
-    <div class="sidebar-plan"><span>✦ FREE PLAN</span><strong>Make your next move</strong><p>Your draft is saved privately in this browser.</p><a href="#analysis-card">Review your resume →</a></div>
+    <div class="sidebar-plan"><span>✦ FREE PLAN</span><strong>Make your next move</strong><p>Saved resumes are private to your account.</p><a href="#analysis-card">Review your resume →</a></div>
   </aside>
   <main class="workspace">
     <section class="editor-panel" aria-label="Resume editor">
@@ -59,9 +59,11 @@
         <div>
           <div class="eyebrow">YOUR DOCUMENT · {{ template.name|upper }}</div>
           <h1>Edit your resume</h1>
+          <label class="resume-title-field">Resume title<input id="resume-title" maxlength="120" value="Untitled resume"></label>
+          <span id="save-status" class="editor-save-status" role="status" aria-live="polite">Loading resume…</span>
           <p>Changes appear in your live preview.</p>
         </div>
-        <div class="editor-actions">{% if template_change_url is defined %}<a class="text-button" href="{{ template_change_url }}">Change template</a>{% endif %}<button class="text-button" id="reset-button" type="button">Start over</button></div>
+        <div class="editor-actions"><button class="text-button" id="save-resume-button" type="button">Save to My Resumes</button>{% if template_change_url is defined %}<a class="text-button" href="{{ template_change_url }}">Change template</a>{% endif %}<button class="text-button" id="import-browser-draft" type="button" hidden>Import browser draft</button><button class="text-button" id="reset-button" type="button">Start over</button></div>
       </div>
 
       <div class="progress-card">
@@ -164,7 +166,7 @@
         <div class="section-title"><span class="section-icon icon-purple">✉</span><div><h2>Cover letter</h2><p>Create a first draft from your resume and target job.</p></div></div>
         <button class="button button-primary analysis-button" id="cover-letter-button" type="button">Create cover letter draft</button>
       </section>
-      <div class="editor-footer"><span class="footer-lock">♧</span> Your resume is saved privately in this browser.</div>
+      <div class="editor-footer"><span class="footer-lock">♧</span> Account resumes are available across your browsers; unsaved drafts stay on this device.</div>
     </section>
 
     <section class="preview-panel" aria-label="Resume preview">

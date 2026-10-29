@@ -95,7 +95,19 @@ const entrySuggestions = {
 
 const form = document.querySelector("#resume-form");
 const status = document.querySelector("#save-status");
+const resumeStorage = window.ResumeDraftStorage;
+const shareLinkKey = `forma-resume-share-link-${document.body.dataset.userId}`;
+const resumeTitleInput = document.querySelector("#resume-title");
+const importDraftButton = document.querySelector("#import-browser-draft");
 const defaults = Object.fromEntries(new FormData(form).entries());
+let persistedResumeId = /^\d+$/.test(document.body.dataset.resumeId || "")
+  ? Number(document.body.dataset.resumeId)
+  : null;
+let persistedVersion = null;
+let changeSequence = 0;
+let saveInProgress = false;
+let saveAgain = false;
+let serverUnsaved = false;
 let entries = structuredClone(defaultEntries);
 let appearance = {
   theme: "#3159b7",
@@ -404,73 +416,230 @@ function updateCompleteness(data) {
 }
 
 function saveDraft() {
+  const draft = {
+    data: readForm(),
+    entries,
+    jobDescription: document.querySelector("#job-description").value,
+    appearance,
+    templateName: document.body.dataset.templateName || "Modern Pro",
+    title: resumeTitleInput.value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+  let localSaved = false;
   try {
-    localStorage.setItem("forma-resume-draft", JSON.stringify({
-      data: readForm(),
-      entries,
-      jobDescription: document.querySelector("#job-description").value,
-      appearance,
-      templateName: document.body.dataset.templateName || "Modern Pro",
-      updatedAt: new Date().toISOString()
-    }));
-    status.textContent = "All changes saved";
+    resumeStorage.saveDraft(draft);
+    localSaved = true;
   } catch (error) {
-    status.textContent = "Could not save draft";
     console.error("Unable to save resume draft to this browser.", error);
+  }
+  if (persistedResumeId) {
+    saveResumeToAccount();
+  } else {
+    status.textContent = localSaved
+      ? "Browser draft saved — not yet saved to your account"
+      : "Could not save browser draft";
   }
 }
 
 function scheduleSave() {
+  changeSequence += 1;
+  serverUnsaved = true;
   status.textContent = "Saving…";
   window.clearTimeout(saveTimer);
   saveTimer = window.setTimeout(saveDraft, 350);
 }
 
-function loadDraft() {
-  try {
-    const saved = localStorage.getItem("forma-resume-draft");
-    if (!saved) return;
-    const draft = JSON.parse(saved);
-    if (!draft || typeof draft !== "object" || !draft.data || !draft.entries) return;
-    for (const [name, value] of Object.entries(draft.data)) {
-      const field = form.elements.namedItem(name);
-      if (field && typeof value === "string") field.value = value;
+function applyResumeContent(content) {
+  if (!content || typeof content !== "object" || !content.data || !content.entries) {
+    throw new Error("The saved resume has an invalid format.");
+  }
+  for (const [name, value] of Object.entries(content.data)) {
+    const field = form.elements.namedItem(name);
+    if (field && typeof value === "string") field.value = value;
+  }
+  for (const type of ["experience", "education", "projects", "certificates"]) {
+    if (Array.isArray(content.entries[type])) {
+      entries[type] = content.entries[type].filter((entry) => entry && typeof entry === "object").map((entry) =>
+        Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, String(value ?? "")])));
     }
-    for (const type of ["experience", "education", "projects", "certificates"]) {
-      if (Array.isArray(draft.entries[type])) {
-        entries[type] = draft.entries[type].filter((entry) => entry && typeof entry === "object").map((entry) =>
-          Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, String(value ?? "")])));
-      }
+  }
+  if (typeof content.jobDescription === "string") {
+    document.querySelector("#job-description").value = content.jobDescription;
+  }
+  const savedAppearance = content.appearance;
+  if (savedAppearance && typeof savedAppearance === "object") {
+    if (typeof savedAppearance.theme === "string" && /^#[\da-f]{6}$/i.test(savedAppearance.theme)) {
+      appearance.theme = savedAppearance.theme;
     }
-    if (typeof draft.jobDescription === "string") {
-      document.querySelector("#job-description").value = draft.jobDescription;
+    if (["single", "sidebar"].includes(savedAppearance.layout)) {
+      appearance.layout = savedAppearance.layout;
     }
-    if (draft.appearance && typeof draft.appearance === "object") {
-      if (typeof draft.appearance.theme === "string" && /^#[\da-f]{6}$/i.test(draft.appearance.theme)) {
-        appearance.theme = draft.appearance.theme;
-      }
-      if (["single", "sidebar"].includes(draft.appearance.layout)) {
-        appearance.layout = draft.appearance.layout;
-      }
-      if (["modern", "classic", "compact"].includes(draft.appearance.font)) {
-        appearance.font = draft.appearance.font;
-      }
-      if (typeof draft.appearance.photo === "string" &&
-        /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(draft.appearance.photo) &&
-        draft.appearance.photo.length <= 2_800_000) {
-        appearance.photo = draft.appearance.photo;
-      }
-      if (draft.appearance.sections && typeof draft.appearance.sections === "object") {
-        for (const section of Object.keys(appearance.sections)) {
-          if (typeof draft.appearance.sections[section] === "boolean") {
-            appearance.sections[section] = draft.appearance.sections[section];
-          }
+    if (["modern", "classic", "compact"].includes(savedAppearance.font)) {
+      appearance.font = savedAppearance.font;
+    }
+    const photo = savedAppearance.photo || content.profilePhoto;
+    if (typeof photo === "string" &&
+      /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(photo) &&
+      photo.length <= 2_800_000) {
+      appearance.photo = photo;
+    }
+    if (savedAppearance.sections && typeof savedAppearance.sections === "object") {
+      for (const section of Object.keys(appearance.sections)) {
+        if (typeof savedAppearance.sections[section] === "boolean") {
+          appearance.sections[section] = savedAppearance.sections[section];
         }
       }
     }
+  } else if (typeof content.profilePhoto === "string" &&
+    /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(content.profilePhoto) &&
+    content.profilePhoto.length <= 2_800_000) {
+    appearance.photo = content.profilePhoto;
+  }
+}
+
+function loadDraft() {
+  try {
+    const draft = resumeStorage.readDraft();
+    if (!draft || typeof draft !== "object") return false;
+    applyResumeContent(draft);
+    if (typeof draft.title === "string" && draft.title.trim()) {
+      resumeTitleInput.value = draft.title;
+    } else if (draft.data.name?.trim()) {
+      resumeTitleInput.value = `${draft.data.name.trim()} Resume`;
+    }
+    return true;
   } catch (error) {
     status.textContent = "Could not load saved draft";
     console.error("Unable to load resume draft from this browser.", error);
+    return false;
+  }
+}
+
+function accountResumePayload() {
+  const data = readForm();
+  const enteredTitle = resumeTitleInput.value.trim();
+  const title = !enteredTitle || enteredTitle === "Untitled resume"
+    ? (data.name.trim() ? `${data.name.trim()} Resume` : "Untitled resume")
+    : enteredTitle;
+  const savedAppearance = { ...appearance };
+  delete savedAppearance.photo;
+  return {
+    title,
+    templateId: document.body.dataset.templateId,
+    content: {
+      ...resumePayload(),
+      jobDescription: document.querySelector("#job-description").value,
+      appearance: savedAppearance
+    }
+  };
+}
+
+async function saveResumeToAccount() {
+  if (saveInProgress) {
+    saveAgain = true;
+    return;
+  }
+  saveInProgress = true;
+  const savedSequence = changeSequence;
+  status.textContent = "Saving to your account…";
+  const isNew = !persistedResumeId;
+  const payload = accountResumePayload();
+  if (!isNew) payload.version = persistedVersion;
+  try {
+    const response = await fetch(
+      isNew ? "/api/resumes" : `/api/resumes/${persistedResumeId}`,
+      {
+        method: isNew ? "POST" : "PUT",
+        headers: csrfHeaders(),
+        body: JSON.stringify(payload)
+      }
+    );
+    if (!response.ok) throw new Error(await responseError(response));
+    const saved = await response.json();
+    persistedResumeId = saved.id;
+    persistedVersion = saved.version;
+    document.body.dataset.resumeId = String(saved.id);
+    document.body.dataset.templateId = saved.templateId;
+    document.body.dataset.templateName = saved.templateName;
+    if (changeSequence === savedSequence) resumeTitleInput.value = saved.title;
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("resume", String(saved.id));
+    window.history.replaceState({}, "", currentUrl);
+    importDraftButton.hidden = true;
+    serverUnsaved = changeSequence !== savedSequence;
+    status.textContent = serverUnsaved ? "Saving recent changes…" : "Saved to your account";
+  } catch (error) {
+    serverUnsaved = true;
+    status.textContent = responseStatusMessage(error);
+    console.error("Unable to save resume to the account.", error);
+  } finally {
+    saveInProgress = false;
+    if (saveAgain || changeSequence !== savedSequence) {
+      saveAgain = false;
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(saveDraft, 350);
+    }
+  }
+}
+
+function responseStatusMessage(error) {
+  if (/Please sign in again|401/.test(error.message || "")) {
+    return "Your session expired. Sign in again; this browser draft is preserved.";
+  }
+  if (/changed elsewhere|409/.test(error.message || "")) {
+    return "This resume changed elsewhere. Reload it before saving again.";
+  }
+  return error.message || "Could not save to your account";
+}
+
+function renderLoadedResume() {
+  renderSuggestionLists();
+  for (const type of ["experience", "education", "projects", "certificates"]) {
+    renderEntries(type);
+  }
+  renderHighlights();
+  renderPreview();
+}
+
+async function loadAccountResume() {
+  if (!persistedResumeId) {
+    try {
+      const hasCurrentDraft = resumeStorage.hasCurrentDraft();
+      const hasLegacyDraft = resumeStorage.hasLegacyDraft();
+      importDraftButton.hidden = !(hasCurrentDraft || hasLegacyDraft);
+      const loaded = loadDraft();
+      status.textContent = loaded
+        ? "Browser draft loaded — not yet saved to your account"
+        : "New resume — changes stay in this browser until saved";
+      renderLoadedResume();
+    } catch (error) {
+      status.textContent = "Browser storage is unavailable; save to your account.";
+      console.error("Unable to inspect browser draft storage.", error);
+    }
+    return;
+  }
+  status.textContent = "Loading from your account…";
+  const editorWorkspace = document.querySelector(".editor-app");
+  const saveButton = document.querySelector("#save-resume-button");
+  editorWorkspace.inert = true;
+  saveButton.disabled = true;
+  try {
+    const response = await fetch(`/api/resumes/${persistedResumeId}`);
+    if (!response.ok) throw new Error(await responseError(response));
+    const saved = await response.json();
+    persistedVersion = saved.version;
+    document.body.dataset.templateId = saved.templateId;
+    document.body.dataset.templateName = saved.templateName || document.body.dataset.templateName;
+    resumeTitleInput.value = saved.title;
+    applyResumeContent(saved.content);
+    status.textContent = "Saved to your account";
+    renderLoadedResume();
+  } catch (error) {
+    status.textContent = responseStatusMessage(error);
+    console.error("Unable to load resume from the account.", error);
+  } finally {
+    editorWorkspace.inert = false;
+    saveButton.disabled = false;
   }
 }
 
@@ -594,11 +763,48 @@ document.querySelector("#job-description").addEventListener("input", () => {
   scheduleSave();
   refreshAnalysisIfVisible();
 });
+resumeTitleInput.addEventListener("input", scheduleSave);
+document.querySelector("#save-resume-button").addEventListener("click", () => {
+  window.clearTimeout(saveTimer);
+  saveDraft();
+  saveResumeToAccount();
+});
+importDraftButton.addEventListener("click", async () => {
+  if (persistedResumeId) return;
+  try {
+    if (!resumeStorage.hasCurrentDraft()) {
+      if (!resumeStorage.hasLegacyDraft()) {
+        throw new Error("No browser draft is available to import.");
+      }
+      const confirmed = window.confirm(
+        "This legacy draft has no account ownership information. Import it only if you know it belongs to your account."
+      );
+      if (!confirmed) return;
+      resumeStorage.importLegacyDraft();
+    }
+    if (!loadDraft()) throw new Error("The browser draft could not be loaded.");
+    renderLoadedResume();
+    changeSequence += 1;
+    serverUnsaved = true;
+    window.clearTimeout(saveTimer);
+    saveDraft();
+    await saveResumeToAccount();
+  } catch (error) {
+    status.textContent = error.message || "Could not import the browser draft";
+    console.error("Unable to import the browser resume draft.", error);
+  }
+});
+window.addEventListener("beforeunload", (event) => {
+  if (!serverUnsaved) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 document.querySelector("#analyze-button").addEventListener("click", analyzeResume);
 document.querySelector("#reset-button").addEventListener("click", () => {
-  if (!window.confirm("Start over and clear your saved resume draft?")) return;
+  if (!window.confirm("Reset this editor to its starter content? Saved account resumes will be updated.")) return;
   form.reset();
   for (const [name, value] of Object.entries(defaults)) form.elements.namedItem(name).value = value;
+  resumeTitleInput.value = "Untitled resume";
   entries = structuredClone(defaultEntries);
   renderHighlights();
   document.querySelector("#job-description").value = "";
@@ -612,7 +818,6 @@ document.querySelector("#reset-button").addEventListener("click", () => {
     },
     photo: ""
   };
-  localStorage.removeItem("forma-resume-draft");
   document.querySelector("#analysis-results").hidden = true;
   document.querySelector("#ats-score-value").innerHTML = "—<small>/ 100</small>";
   document.querySelector("#ats-mini-checks").textContent = "Run your resume check to see feedback.";
@@ -621,7 +826,7 @@ document.querySelector("#reset-button").addEventListener("click", () => {
   renderEntries("projects");
   renderEntries("certificates");
   renderPreview();
-  status.textContent = "All changes saved";
+  scheduleSave();
 });
 document.querySelector("#zoom-in").addEventListener("click", () => changeZoom(10));
 document.querySelector("#zoom-out").addEventListener("click", () => changeZoom(-10));
@@ -686,11 +891,11 @@ let activeShareUrl = "";
 
 function loadShareLink() {
   try {
-    const savedUrl = localStorage.getItem("forma-resume-share-link");
+    const savedUrl = localStorage.getItem(shareLinkKey);
     if (!savedUrl) return;
     const parsedUrl = new URL(savedUrl, window.location.href);
     if (parsedUrl.origin !== window.location.origin || !/^\/resume\/shared\/[A-Za-z0-9_-]+$/.test(parsedUrl.pathname)) {
-      localStorage.removeItem("forma-resume-share-link");
+      localStorage.removeItem(shareLinkKey);
       return;
     }
     activeShareUrl = parsedUrl.href;
@@ -702,7 +907,7 @@ function loadShareLink() {
 
 function persistShareLink(url) {
   try {
-    localStorage.setItem("forma-resume-share-link", url);
+    localStorage.setItem(shareLinkKey, url);
     return true;
   } catch (error) {
     console.error("Unable to save the share link in this browser.", error);
@@ -774,7 +979,7 @@ async function revokeShareLink() {
     document.querySelector("#refresh-share-link").hidden = true;
     activeShareToken = "";
     activeShareUrl = "";
-    localStorage.removeItem("forma-resume-share-link");
+    localStorage.removeItem(shareLinkKey);
     feedback.textContent = "Share link disabled. It can no longer be viewed.";
   } catch (error) {
     feedback.textContent = error.message || "We couldn't disable this link.";
@@ -1100,12 +1305,12 @@ try {
   console.error("Unable to load saved editor preferences.", error);
 }
 
-loadDraft();
 loadShareLink();
 renderSuggestionLists();
 for (const type of ["experience", "education", "projects", "certificates"]) renderEntries(type);
 renderHighlights();
 renderPreview();
+loadAccountResume();
 document.querySelectorAll(".section-tabs a").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".section-tabs a").forEach((item) => item.classList.remove("active"));

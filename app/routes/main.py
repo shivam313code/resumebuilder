@@ -2,12 +2,9 @@ import hashlib
 import hmac
 import json
 import secrets
-import sqlite3
-from contextlib import closing
 
 from flask import (
     Blueprint,
-    current_app,
     g,
     jsonify,
     redirect,
@@ -17,27 +14,19 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy import delete, func, select, update
 
 from ..auth import login_required
-from ..services.resume_service import build_docx, validate_resume
+from ..extensions import db
+from ..models import Resume, ResumeShare, User
+from ..services.resume_service import (
+    build_docx,
+    validate_resume,
+    validate_resume_document,
+)
 
 
 main_blueprint = Blueprint("main", __name__)
-
-
-def init_resume_shares(app):
-    with closing(sqlite3.connect(app.config["DATABASE"])) as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS resume_shares (
-                token_hash TEXT PRIMARY KEY,
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                resume_json TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        connection.commit()
 
 
 def _resume_payload():
@@ -67,10 +56,50 @@ def _require_resume_session():
     return None
 
 
-def _open_share_database():
-    connection = sqlite3.connect(current_app.config["DATABASE"])
-    connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+def _resume_request_payload(*, require_version=False):
+    if not request.is_json:
+        return None, (jsonify(error="Send resume data as JSON."), 400)
+    if request.content_length and request.content_length > 3_000_000:
+        return None, (jsonify(error="Resume data is too large."), 413)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return None, (jsonify(error="Resume data is invalid."), 400)
+    title = payload.get("title", "")
+    template_id = payload.get("templateId", "")
+    if not isinstance(title, str) or not title.strip() or len(title.strip()) > 120:
+        return None, (jsonify(error="Resume title must be between 1 and 120 characters."), 400)
+    if not isinstance(template_id, str) or template_id not in TEMPLATES_BY_ID:
+        return None, (jsonify(error="Choose one of the available resume templates."), 400)
+    content = payload.get("content")
+    try:
+        clean_content = validate_resume_document(content)
+    except (TypeError, ValueError) as error:
+        return None, (jsonify(error=str(error)), 400)
+
+    version = payload.get("version")
+    if require_version and (type(version) is not int or version < 1):
+        return None, (jsonify(error="A valid resume version is required."), 400)
+    return {
+        "title": title.strip(),
+        "template_id": template_id,
+        "content": clean_content,
+        "version": version,
+    }, None
+
+
+def _resume_response(resume):
+    return {
+        "id": resume.id,
+        "title": resume.title,
+        "templateId": resume.template_id,
+        "templateName": TEMPLATES_BY_ID[resume.template_id]["name"],
+        "content": resume.content,
+        "version": resume.version,
+        "createdAt": resume.created_at.isoformat(),
+        "updatedAt": resume.updated_at.isoformat(),
+    }
+
+
 RESUME_TEMPLATES = [
     {
         "id": "modern-pro",
@@ -104,6 +133,141 @@ RESUME_TEMPLATES = [
     },
 ]
 TEMPLATES_BY_ID = {template["id"]: template for template in RESUME_TEMPLATES}
+
+
+@main_blueprint.get("/api/resumes")
+def list_resumes():
+    if g.user is None:
+        return jsonify(error="Please sign in again to continue."), 401
+    resumes = db.session.scalars(
+        select(Resume)
+        .where(Resume.user_id == g.user.id)
+        .order_by(Resume.updated_at.desc(), Resume.id.desc())
+    ).all()
+    return jsonify(resumes=[_resume_response(resume) for resume in resumes])
+
+
+@main_blueprint.post("/api/resumes")
+def create_resume():
+    error_response = _require_resume_session()
+    if error_response:
+        return error_response
+    payload, error_response = _resume_request_payload()
+    if error_response:
+        return error_response
+    resume = Resume(
+        user_id=g.user.id,
+        title=payload["title"],
+        template_id=payload["template_id"],
+        content=payload["content"],
+    )
+    with db.session.begin():
+        db.session.add(resume)
+        db.session.flush()
+    return jsonify(_resume_response(resume)), 201
+
+
+@main_blueprint.get("/api/resumes/<int:resume_id>")
+def get_resume(resume_id):
+    if g.user is None:
+        return jsonify(error="Please sign in again to continue."), 401
+    resume = db.session.scalar(
+        select(Resume).where(
+            Resume.id == resume_id,
+            Resume.user_id == g.user.id,
+        )
+    )
+    if resume is None:
+        return jsonify(error="Resume not found."), 404
+    return jsonify(_resume_response(resume))
+
+
+@main_blueprint.put("/api/resumes/<int:resume_id>")
+def update_resume(resume_id):
+    error_response = _require_resume_session()
+    if error_response:
+        return error_response
+    payload, error_response = _resume_request_payload(require_version=True)
+    if error_response:
+        return error_response
+    with db.session.begin():
+        result = db.session.execute(
+            update(Resume)
+            .where(
+                Resume.id == resume_id,
+                Resume.user_id == g.user.id,
+                Resume.version == payload["version"],
+            )
+            .values(
+                title=payload["title"],
+                template_id=payload["template_id"],
+                content=payload["content"],
+                version=Resume.version + 1,
+                updated_at=func.current_timestamp(),
+            )
+        )
+        if result.rowcount == 0:
+            owned_resume = db.session.scalar(
+                select(Resume.id).where(
+                    Resume.id == resume_id,
+                    Resume.user_id == g.user.id,
+                )
+            )
+            if owned_resume is None:
+                return jsonify(error="Resume not found."), 404
+            return jsonify(
+                error="This resume changed elsewhere. Reload it before saving again."
+            ), 409
+        resume = db.session.scalar(
+            select(Resume).where(
+                Resume.id == resume_id,
+                Resume.user_id == g.user.id,
+            )
+        )
+    return jsonify(_resume_response(resume))
+
+
+@main_blueprint.post("/api/resumes/<int:resume_id>/duplicate")
+def duplicate_resume(resume_id):
+    error_response = _require_resume_session()
+    if error_response:
+        return error_response
+    with db.session.begin():
+        source = db.session.scalar(
+            select(Resume).where(
+                Resume.id == resume_id,
+                Resume.user_id == g.user.id,
+            )
+        )
+        if source is None:
+            return jsonify(error="Resume not found."), 404
+        duplicate = Resume(
+            user_id=g.user.id,
+            title=f"{source.title[:113]} (Copy)",
+            template_id=source.template_id,
+            content=source.content,
+            version=1,
+        )
+        db.session.add(duplicate)
+        db.session.flush()
+    return jsonify(_resume_response(duplicate)), 201
+
+
+@main_blueprint.delete("/api/resumes/<int:resume_id>")
+def delete_resume(resume_id):
+    error_response = _require_resume_session()
+    if error_response:
+        return error_response
+    with db.session.begin():
+        result = db.session.execute(
+            delete(Resume).where(
+                Resume.id == resume_id,
+                Resume.user_id == g.user.id,
+            )
+        )
+    if result.rowcount == 0:
+        return jsonify(error="Resume not found."), 404
+    return jsonify(message="Resume deleted.")
 
 
 @main_blueprint.get("/")
@@ -186,13 +350,20 @@ def create_resume_share():
         return error_response
     token = secrets.token_urlsafe(24)
     token_hash = hashlib.sha256(token.encode("ascii")).hexdigest()
-    with closing(_open_share_database()) as connection:
-        connection.execute("DELETE FROM resume_shares WHERE user_id = ?", (g.user["id"],))
-        connection.execute(
-            "INSERT INTO resume_shares (token_hash, user_id, resume_json) VALUES (?, ?, ?)",
-            (token_hash, g.user["id"], json.dumps(resume)),
+    with db.session.begin():
+        db.session.execute(
+            select(User.id).where(User.id == g.user.id).with_for_update()
         )
-        connection.commit()
+        db.session.execute(
+            delete(ResumeShare).where(ResumeShare.user_id == g.user.id)
+        )
+        db.session.add(
+            ResumeShare(
+                token_hash=token_hash,
+                user_id=g.user.id,
+                resume_json=json.dumps(resume),
+            )
+        )
     return jsonify(url=url_for("main.shared_resume", token=token, _external=True)), 201
 
 
@@ -202,13 +373,14 @@ def revoke_resume_share(token):
     if error_response:
         return error_response
     token_hash = hashlib.sha256(token.encode("ascii", errors="ignore")).hexdigest()
-    with closing(_open_share_database()) as connection:
-        cursor = connection.execute(
-            "DELETE FROM resume_shares WHERE token_hash = ? AND user_id = ?",
-            (token_hash, g.user["id"]),
+    with db.session.begin():
+        result = db.session.execute(
+            delete(ResumeShare).where(
+                ResumeShare.token_hash == token_hash,
+                ResumeShare.user_id == g.user.id,
+            )
         )
-        connection.commit()
-    if cursor.rowcount == 0:
+    if result.rowcount == 0:
         return jsonify(error="This share link is no longer available."), 404
     return jsonify(message="Share link disabled.")
 
@@ -216,12 +388,8 @@ def revoke_resume_share(token):
 @main_blueprint.get("/resume/shared/<token>")
 def shared_resume(token):
     token_hash = hashlib.sha256(token.encode("ascii", errors="ignore")).hexdigest()
-    with closing(_open_share_database()) as connection:
-        row = connection.execute(
-            "SELECT resume_json FROM resume_shares WHERE token_hash = ?",
-            (token_hash,),
-        ).fetchone()
-    if row is None:
+    share = db.session.get(ResumeShare, token_hash)
+    if share is None:
         return render_template("shared_resume.html", resume=None), 404
-    resume = validate_resume(json.loads(row[0]))
+    resume = validate_resume(json.loads(share.resume_json))
     return render_template("shared_resume.html", resume=resume)

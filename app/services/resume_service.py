@@ -67,6 +67,56 @@ def validate_resume(payload):
     return {"data": clean_data, "entries": clean_entries, "profilePhoto": profile_photo}
 
 
+def validate_resume_document(payload):
+    if not isinstance(payload, dict) or len(json.dumps(payload)) > MAX_RESUME_SIZE:
+        raise ValueError("Resume data is invalid or too large.")
+    appearance = payload.get("appearance", {})
+    if not isinstance(appearance, dict):
+        raise ValueError("Resume appearance settings are invalid.")
+    profile_photo = payload.get("profilePhoto", appearance.get("photo", ""))
+    validated = validate_resume({**payload, "profilePhoto": profile_photo})
+
+    job_description = payload.get("jobDescription", "")
+    if not isinstance(job_description, str) or len(job_description) > 10_000:
+        raise ValueError("Job description must be text under 10,000 characters.")
+
+    theme = appearance.get("theme", "#3159b7")
+    layout = appearance.get("layout", "single")
+    font = appearance.get("font", "modern")
+    sections = appearance.get("sections", {})
+    if not isinstance(theme, str) or not re.fullmatch(r"#[\da-fA-F]{6}", theme):
+        raise ValueError("Resume theme must be a six-digit color.")
+    if not isinstance(layout, str) or layout not in {"single", "sidebar"}:
+        raise ValueError("Resume layout is invalid.")
+    if not isinstance(font, str) or font not in {"modern", "classic", "compact"}:
+        raise ValueError("Resume font is invalid.")
+    if not isinstance(sections, dict) or any(
+        not isinstance(value, bool) for value in sections.values()
+    ):
+        raise ValueError("Resume section settings are invalid.")
+    allowed_sections = {
+        "summary", "highlights", "experience", "education", "skills",
+        "projects", "languages", "certificates", "software", "interests",
+    }
+    if set(sections) - allowed_sections:
+        raise ValueError("Resume section settings contain an unknown section.")
+    default_sections = {
+        section: True for section in allowed_sections
+    }
+    default_sections.update(sections)
+
+    return {
+        **validated,
+        "jobDescription": job_description,
+        "appearance": {
+            "theme": theme.lower(),
+            "layout": layout,
+            "font": font,
+            "sections": default_sections,
+        },
+    }
+
+
 def _append_text(parent, text, *, bold=False, size=None):
     paragraph = SubElement(parent, f"{{{WORD_NAMESPACE}}}p")
     run = SubElement(paragraph, f"{{{WORD_NAMESPACE}}}r")

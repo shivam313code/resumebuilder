@@ -1,10 +1,8 @@
 import hmac
 import re
 import secrets
-import sqlite3
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from functools import wraps
-from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from authlib.integrations.flask_client import OAuth
@@ -21,7 +19,12 @@ from flask import (
     session,
     url_for,
 )
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from .extensions import db
+from .models import OAuthAccount, User
 
 
 auth_blueprint = Blueprint("auth", __name__)
@@ -40,30 +43,6 @@ OAUTH_PROVIDERS = {
 
 
 def init_auth(app):
-    database_path = Path(app.config["DATABASE"])
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(database_path)) as connection:
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                password_hash TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS oauth_accounts (
-                id INTEGER PRIMARY KEY,
-                provider TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                UNIQUE(provider, subject)
-            );
-            """
-        )
-        connection.commit()
-
     oauth.init_app(app)
     oauth_enabled = {}
     for provider, settings in OAUTH_PROVIDERS.items():
@@ -83,17 +62,8 @@ def init_auth(app):
 
 @contextmanager
 def _connect():
-    connection = sqlite3.connect(current_app.config["DATABASE"])
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    try:
-        yield connection
-        connection.commit()
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
+    with db.session.begin():
+        yield db.session
 
 
 def _csrf_token():
@@ -144,9 +114,7 @@ def load_logged_in_user():
     user_id = session.get("user_id")
     if user_id is not None:
         with _connect() as connection:
-            g.user = connection.execute(
-                "SELECT id, name, email FROM users WHERE id = ?", (user_id,)
-            ).fetchone()
+            g.user = connection.get(User, user_id)
         if g.user is None:
             session.pop("user_id", None)
     _csrf_token()
@@ -189,16 +157,16 @@ def login():
         user = None
         if len(email) <= 254 and len(password) <= 256:
             with _connect() as connection:
-                user = connection.execute(
-                    "SELECT id, password_hash FROM users WHERE email = ?", (email,)
-                ).fetchone()
-        if user is None or user["password_hash"] is None or not check_password_hash(
-            user["password_hash"], password
+                user = connection.scalar(
+                    select(User).where(func.lower(User.email) == email)
+                )
+        if user is None or user.password_hash is None or not check_password_hash(
+            user.password_hash, password
         ):
             flash("Email or password is incorrect.", "error")
             return _render_account_page("login", status=401)
 
-        _start_user_session(user["id"])
+        _start_user_session(user.id)
         flash("You're signed in.", "success")
         return redirect(_safe_next_url())
 
@@ -231,12 +199,11 @@ def signup():
         password_hash = generate_password_hash(password)
         try:
             with _connect() as connection:
-                cursor = connection.execute(
-                    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                    (name, email, password_hash),
-                )
-                user_id = cursor.lastrowid
-        except sqlite3.IntegrityError:
+                user = User(name=name, email=email, password_hash=password_hash)
+                connection.add(user)
+                connection.flush()
+                user_id = user.id
+        except IntegrityError:
             flash("An account with that email already exists. Sign in instead.", "error")
             return _render_account_page("signup", status=409)
 
@@ -268,7 +235,10 @@ def update_profile_name():
     if not name or len(name) > 100:
         return jsonify(error="Enter a name between 1 and 100 characters."), 400
     with _connect() as connection:
-        connection.execute("UPDATE users SET name = ? WHERE id = ?", (name, g.user["id"]))
+        user = connection.get(User, g.user.id)
+        if user is None:
+            return jsonify(error="Please sign in again to continue."), 401
+        user.name = name
     return jsonify(name=name)
 
 
@@ -288,20 +258,15 @@ def update_password():
         flash("The new password and confirmation do not match.", "error")
         return redirect(url_for("main.settings") + "#security")
     with _connect() as connection:
-        user = connection.execute(
-            "SELECT password_hash FROM users WHERE id = ?", (g.user["id"],)
-        ).fetchone()
+        user = connection.get(User, g.user.id)
         if user is None:
             return jsonify(error="Your account could not be found."), 404
-        if user["password_hash"] and not check_password_hash(
-            user["password_hash"], current_password
+        if user.password_hash and not check_password_hash(
+            user.password_hash, current_password
         ):
             flash("Your current password is incorrect.", "error")
             return redirect(url_for("main.settings") + "#security")
-        connection.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
-            (generate_password_hash(new_password), g.user["id"]),
-        )
+        user.password_hash = generate_password_hash(new_password)
     flash("Your password has been updated.", "success")
     return redirect(url_for("main.settings") + "#security")
 
@@ -347,33 +312,29 @@ def oauth_callback(provider):
         return redirect(url_for("auth.login"))
 
     with _connect() as connection:
-        account = connection.execute(
-            """
-            SELECT users.id
-            FROM oauth_accounts
-            JOIN users ON users.id = oauth_accounts.user_id
-            WHERE oauth_accounts.provider = ? AND oauth_accounts.subject = ?
-            """,
-            (provider, subject),
-        ).fetchone()
+        account = connection.scalar(
+            select(OAuthAccount).where(
+                OAuthAccount.provider == provider,
+                OAuthAccount.subject == subject,
+            )
+        )
         if account is None:
-            user = connection.execute(
-                "SELECT id FROM users WHERE email = ?", (email,)
-            ).fetchone()
+            user = connection.scalar(
+                select(User).where(func.lower(User.email) == email)
+            )
             if user is None:
-                cursor = connection.execute(
-                    "INSERT INTO users (name, email) VALUES (?, ?)",
-                    (name or email.split("@", 1)[0], email),
+                user = User(
+                    name=name or email.split("@", 1)[0],
+                    email=email,
                 )
-                user_id = cursor.lastrowid
-            else:
-                user_id = user["id"]
-            connection.execute(
-                "INSERT INTO oauth_accounts (provider, subject, user_id) VALUES (?, ?, ?)",
-                (provider, subject, user_id),
+                connection.add(user)
+                connection.flush()
+            user_id = user.id
+            connection.add(
+                OAuthAccount(provider=provider, subject=subject, user_id=user_id)
             )
         else:
-            user_id = account["id"]
+            user_id = account.user_id
 
     next_url = _safe_next_url()
     _start_user_session(user_id)

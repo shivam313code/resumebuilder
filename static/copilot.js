@@ -1,5 +1,5 @@
 (() => {
-  const draftKey = "forma-resume-draft";
+  const resumeStorage = window.ResumeDraftStorage;
   const statsKey = "forma-copilot-stats";
   const jobKey = "forma-copilot-job-description";
   const sectionSelect = document.querySelector("#copilot-section");
@@ -17,8 +17,7 @@
 
   function readDraft() {
     try {
-      const saved = localStorage.getItem(draftKey);
-      const parsed = saved ? JSON.parse(saved) : null;
+      const parsed = resumeStorage.readDraft();
       return parsed && parsed.data && parsed.entries ? parsed : null;
     } catch (error) {
       console.error("Unable to read the saved resume draft.", error);
@@ -55,7 +54,7 @@
 
   function saveLocalDraft() {
     try {
-      localStorage.setItem(draftKey, JSON.stringify(state.draft));
+      resumeStorage.saveDraft(state.draft);
       feedback.textContent = "Applied to your local resume draft.";
       refreshAnalysis();
     } catch (error) {

@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='resume-storage.js') }}" defer></script>
   <script src="{{ url_for('static', filename='settings.js') }}" defer></script>
 </head>
 <body class="workspace-page settings-page" data-user-id="{{ current_user.id }}" data-profile-name="{{ current_user.name }}" data-profile-email="{{ current_user.email }}">
@@ -149,9 +150,10 @@
           </section>
 
           <section class="settings-card" id="privacy">
-            <div class="settings-card-heading"><span class="settings-icon">⌘</span><div><h2>Data &amp; Privacy</h2><p>Export or remove data saved in this browser</p></div></div>
-            <p class="settings-honesty-note">Profile details, preferences, and job applications are saved in this browser. Your account name and sign-in email are stored by ResumePro.</p>
-            <div class="settings-privacy-actions"><button id="export-local-data" type="button" class="small-outline-button">Download Local Data</button><button id="clear-local-data" type="button" class="danger-outline-button">Clear Local Profile &amp; Preferences</button></div>
+            <div class="settings-card-heading"><span class="settings-icon">⌘</span><div><h2>Data &amp; Privacy</h2><p>Export or remove data saved for this account in this browser</p></div></div>
+            <p class="settings-honesty-note">Profile details, preferences, browser resume draft, and job applications are saved locally for this account. Your account name and sign-in email are stored by ResumePro. Account resumes and active share links are not included in this local export and are not removed here.</p>
+            <p id="legacy-draft-notice" class="settings-honesty-note" hidden>An older resume draft without account information was found in this browser. It is not included in this account's data unless you explicitly import it.</p>
+            <div class="settings-privacy-actions"><button id="export-local-data" type="button" class="small-outline-button">Download This Account's Local Data</button><button id="clear-local-data" type="button" class="danger-outline-button">Clear This Account's Local Data</button><button id="import-legacy-draft" type="button" class="small-outline-button" hidden>Import Unassigned Legacy Draft</button></div>
             <p id="privacy-feedback" role="status" aria-live="polite"></p>
           </section>
 
