@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "python-envs.defaultEnvManager": "ms-python.python:conda",
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "search.exclude": {
@@ -17,8 +16,4 @@
         "**/.coverage*": true,
         "**/*.log": true
     }
-=======
-    "python-envs.defaultEnvManager": "ms-python.python:venv",
-    "python-envs.defaultPackageManager": "ms-python.python:pip"
->>>>>>> 58627436a23aa7d59bd302be7d40ad30b0e767b0
 }

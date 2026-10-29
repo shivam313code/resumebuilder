@@ -135,6 +135,11 @@ def settings():
     return render_template("settings.html")
 
 
+@main_blueprint.get("/pricing")
+def pricing():
+    return render_template("pricing.html")
+
+
 @main_blueprint.get("/resume-builder")
 @login_required
 def resume_builder():

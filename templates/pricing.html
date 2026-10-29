@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090b24">
+  <title>Pricing Plans — ResumePro</title>
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="rp-pricing-page">
+  <header class="rp-header" id="top">
+    <a class="rp-brand" href="{{ url_for('main.index') }}" aria-label="ResumePro home"><span class="rp-brand-mark">R</span><span>ResumePro</span></a>
+    <nav class="rp-nav" aria-label="Main navigation">
+      <a href="{{ url_for('main.index') }}">Home</a>
+      <a href="{{ url_for('main.resume_builder') }}">Templates</a>
+      <a href="{{ url_for('main.index', _anchor='features') }}">AI Tools</a>
+      <a class="active" aria-current="page" href="{{ url_for('main.pricing') }}">Pricing</a>
+      <a href="{{ url_for('main.index', _anchor='career-tips') }}">Blog</a>
+      <a href="{{ url_for('main.index', _anchor='about') }}">About</a>
+    </nav>
+    <div class="rp-header-actions">
+      <span class="rp-theme-toggle rp-theme-display" title="Theme follows your homepage preference" aria-label="Theme follows your homepage preference">
+        <span aria-hidden="true">☼</span><span class="rp-toggle-track"><i></i></span><span aria-hidden="true">☾</span>
+      </span>
+      {% if current_user %}
+      <a class="rp-login" href="{{ url_for('main.resume_builder') }}">{{ current_user.name }}</a>
+      <form class="rp-logout-form" method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="rp-get-started" type="submit">Log Out</button></form>
+      {% else %}
+      <a class="rp-login" href="{{ url_for('auth.login') }}">Login</a>
+      <a class="rp-get-started" href="{{ url_for('auth.signup') }}">Get Started <span aria-hidden="true">→</span></a>
+      {% endif %}
+    </div>
+    <button class="rp-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <main class="rp-pricing-main">
+    <section class="rp-pricing-hero" aria-labelledby="pricing-title">
+      <div class="rp-pricing-kicker"><span aria-hidden="true">✦</span> SIMPLE &amp; TRANSPARENT PRICING</div>
+      <h1 id="pricing-title">Choose the Plan That <span>Fits Your Goals</span></h1>
+      <p>Everything you need to create a professional resume and land your dream job.</p>
+      <div class="rp-billing-switch" role="group" aria-label="Billing period">
+        <button type="button" data-billing="monthly" aria-pressed="false">Monthly</button>
+        <button type="button" data-billing="yearly" aria-pressed="true">Yearly <span>Save 20%</span></button>
+      </div>
+      <p class="rp-billing-note" aria-live="polite">Billed annually. Cancel anytime.</p>
+    </section>
+
+    <section class="rp-pricing-grid" aria-label="Available pricing plans">
+      <article class="rp-plan-card rp-plan-free">
+        <div class="rp-plan-topline"><span class="rp-plan-icon" aria-hidden="true">▤</span><span class="rp-plan-badge">START HERE</span></div>
+        <h2>Free</h2>
+        <p class="rp-plan-summary">Get started with basic features</p>
+        <div class="rp-plan-price"><span class="rp-currency">₹</span><strong>0</strong><span class="rp-price-period">/month</span></div>
+        <ul class="rp-plan-features">
+          <li><span aria-hidden="true">✓</span>3 Resume Downloads</li>
+          <li><span aria-hidden="true">✓</span>Basic Templates</li>
+          <li><span aria-hidden="true">✓</span>AI Suggestions (Limited)</li>
+          <li class="is-unavailable"><span aria-hidden="true">×</span>ATS Analysis</li>
+          <li class="is-unavailable"><span aria-hidden="true">×</span>Cover Letter Generator</li>
+          <li class="is-unavailable"><span aria-hidden="true">×</span>Interview Preparation</li>
+          <li class="is-unavailable"><span aria-hidden="true">×</span>Priority Support</li>
+        </ul>
+        <a class="rp-plan-cta" href="{{ url_for('main.resume_builder') if current_user else url_for('auth.signup') }}">Get Started</a>
+      </article>
+
+      <article class="rp-plan-card rp-plan-pro">
+        <div class="rp-plan-topline"><span class="rp-plan-icon" aria-hidden="true">♛</span><span class="rp-plan-badge">MOST POPULAR</span></div>
+        <h2>Pro</h2>
+        <p class="rp-plan-summary">For serious job seekers</p>
+        <div class="rp-plan-price"><span class="rp-currency">₹</span><strong data-monthly="699" data-yearly="499">499</strong><span class="rp-price-period">/month</span><s data-original-monthly="" data-original-yearly="₹699">₹699</s><span class="rp-saving">Save 20%</span></div>
+        <ul class="rp-plan-features">
+          <li><span aria-hidden="true">✓</span>Unlimited Downloads</li>
+          <li><span aria-hidden="true">✓</span>Premium Templates</li>
+          <li><span aria-hidden="true">✓</span>Full AI Writing Assistant</li>
+          <li><span aria-hidden="true">✓</span>ATS Optimization</li>
+          <li><span aria-hidden="true">✓</span>Cover Letter Generator</li>
+          <li><span aria-hidden="true">✓</span>Interview Preparation</li>
+          <li><span aria-hidden="true">✓</span>Job Description Matching</li>
+          <li><span aria-hidden="true">✓</span>Priority Support</li>
+        </ul>
+        <a class="rp-plan-cta" href="{{ url_for('main.resume_builder') if current_user else url_for('auth.signup') }}">Upgrade to Pro</a>
+      </article>
+
+      <article class="rp-plan-card rp-plan-team">
+        <div class="rp-plan-topline"><span class="rp-plan-icon" aria-hidden="true">♟</span><span class="rp-plan-badge">FOR TEAMS</span></div>
+        <h2>Team</h2>
+        <p class="rp-plan-summary">For professionals &amp; teams</p>
+        <div class="rp-plan-price"><span class="rp-currency">₹</span><strong data-monthly="1299" data-yearly="999">999</strong><span class="rp-price-period">/month</span><s data-original-monthly="" data-original-yearly="₹1,299">₹1,299</s><span class="rp-saving">Save 20%</span></div>
+        <ul class="rp-plan-features">
+          <li><span aria-hidden="true">✓</span>Everything in Pro</li>
+          <li><span aria-hidden="true">✓</span>Team Collaboration</li>
+          <li><span aria-hidden="true">✓</span>Custom Templates</li>
+          <li><span aria-hidden="true">✓</span>Multiple Users</li>
+          <li><span aria-hidden="true">✓</span>Analytics Dashboard</li>
+          <li><span aria-hidden="true">✓</span>Dedicated Support</li>
+          <li><span aria-hidden="true">✓</span>API Access (Optional)</li>
+          <li><span aria-hidden="true">✓</span>Priority Feature Requests</li>
+        </ul>
+        <a class="rp-plan-cta" href="{{ url_for('main.resume_builder') if current_user else url_for('auth.signup') }}">Get Started</a>
+      </article>
+    </section>
+
+    <section class="rp-pricing-assurances" aria-label="Customer assurances">
+      <div><span class="rp-assurance-icon" aria-hidden="true">ϟ</span><span><strong>7-Day Money Back</strong><small>No questions asked</small></span></div>
+      <div><span class="rp-assurance-icon" aria-hidden="true">✓</span><span><strong>Secure Payment</strong><small>100% secure and encrypted</small></span></div>
+      <div><span class="rp-assurance-icon" aria-hidden="true">☏</span><span><strong>24/7 Support</strong><small>We’re here to help</small></span></div>
+      <div><span class="rp-assurance-icon" aria-hidden="true">♧</span><span><strong>500K+ Users</strong><small>Trusted by job seekers worldwide</small></span></div>
+    </section>
+  </main>
+
+  <script>
+    const billingButtons = document.querySelectorAll("[data-billing]");
+    const updateBilling = (period) => {
+      billingButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.billing === period));
+      });
+      document.querySelectorAll(".rp-plan-price strong[data-monthly]").forEach((price) => {
+        price.textContent = price.dataset[period];
+      });
+      document.querySelectorAll(".rp-plan-price s").forEach((original) => {
+        original.hidden = period !== "yearly";
+      });
+      document.querySelectorAll(".rp-saving").forEach((saving) => {
+        saving.hidden = period !== "yearly";
+      });
+      document.querySelector(".rp-billing-note").textContent = period === "yearly"
+        ? "Billed annually. Cancel anytime."
+        : "Billed monthly. Cancel anytime.";
+    };
+
+    billingButtons.forEach((button) => {
+      button.addEventListener("click", () => updateBilling(button.dataset.billing));
+    });
+
+    const menuToggle = document.querySelector(".rp-menu-toggle");
+    const navigation = document.querySelector(".rp-nav");
+    menuToggle.addEventListener("click", () => {
+      const isOpen = navigation.classList.toggle("is-open");
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+      menuToggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+    });
+  </script>
+</body>
+</html>

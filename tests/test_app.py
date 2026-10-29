@@ -61,6 +61,7 @@ class ResumeBuilderRouteTests(unittest.TestCase):
     def test_main_pages_render(self):
         pages = (
             ("/", b"ResumePro"),
+            ("/pricing", b"Choose the Plan"),
             ("/pdf-to-word", b"PDF to Word"),
             ("/photo-resize", b"Photo Resize"),
         )
@@ -69,6 +70,23 @@ class ResumeBuilderRouteTests(unittest.TestCase):
             with self.subTest(path=path):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
+                self.assertIn(expected_text, response.data)
+
+    def test_pricing_page_displays_plans_and_billing_controls(self):
+        response = self.client.get("/pricing")
+
+        self.assertEqual(response.status_code, 200)
+        for expected_text in (
+            b"Free",
+            b"Pro",
+            b"Team",
+            b"Monthly",
+            b"Yearly",
+            b"ATS Optimization",
+            b"Team Collaboration",
+            b"7-Day Money Back",
+        ):
+            with self.subTest(expected_text=expected_text):
                 self.assertIn(expected_text, response.data)
 
     def test_resume_builder_requires_login_and_displays_gallery_after_login(self):
@@ -470,10 +488,14 @@ class ResumeBuilderRouteTests(unittest.TestCase):
 
         self.assertIn(b"Create a Job-Winning", response.data)
         self.assertIn(b"AI Tools", response.data)
+        self.assertIn(b'href="/pricing"', response.data)
         self.assertIn(b"ATS Score", response.data)
         self.assertIn(b'href="/signup?next=/dashboard"', response.data)
         self.assertIn(b'href="/login?next=/dashboard"', response.data)
         self.assertIn(b'href="/resume-builder/modern-pro"', response.data)
+        self.assertIn(b'class="rp-trust-belt"', response.data)
+        self.assertEqual(response.data.count(b'class="rp-trust-group">'), 1)
+        self.assertIn(b'class="rp-trust-group" aria-hidden="true"', response.data)
         self.assertIn(b'href="/resume-builder"', response.data)
         self.assertIn(b'href="/pdf-to-word"', response.data)
         self.assertIn(b'href="/photo-resize"', response.data)

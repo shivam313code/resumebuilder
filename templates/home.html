@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#090b24">
   <meta name="description" content="Create a professional, ATS-friendly resume with ResumePro. Explore templates and build your next opportunity.">
   <title>ResumePro — Create a Job-Winning Resume with AI</title>
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,7 +22,7 @@
       <a class="active" href="#top">Home</a>
       <a href="{{ url_for('main.resume_builder') }}">Templates</a>
       <a href="#features">AI Tools</a>
-      <a href="#pricing">Pricing</a>
+      <a href="{{ url_for('main.pricing') }}">Pricing</a>
       <a href="#career-tips">Blog</a>
       <a href="#about">About</a>
     </nav>
@@ -107,12 +108,26 @@
 
     <section class="rp-trust" id="about" aria-label="Trusted by professionals at leading companies">
       <span class="rp-trust-label">Trusted by professionals at</span>
-      <span class="rp-google"><b>G</b><i>o</i><em>o</em><b>g</b><i>l</i><em>e</em></span>
-      <span class="rp-microsoft"><i><b></b><b></b><b></b><b></b></i>Microsoft</span>
-      <span class="rp-amazon">amazon<small>⌣</small></span>
-      <span class="rp-adobe"><b>◢</b> Adobe</span>
-      <span class="rp-deloitte">Deloitte<span>.</span></span>
-      <span class="rp-tata">◉ TATA</span>
+      <div class="rp-trust-belt">
+        <div class="rp-trust-track">
+          <div class="rp-trust-group">
+            <span class="rp-google"><b>G</b><i>o</i><em>o</em><b>g</b><i>l</i><em>e</em></span>
+            <span class="rp-microsoft"><i><b></b><b></b><b></b><b></b></i>Microsoft</span>
+            <span class="rp-amazon">amazon<small>⌣</small></span>
+            <span class="rp-adobe"><b>◢</b> Adobe</span>
+            <span class="rp-deloitte">Deloitte<span>.</span></span>
+            <span class="rp-tata">◉ TATA</span>
+          </div>
+          <div class="rp-trust-group" aria-hidden="true">
+            <span class="rp-google"><b>G</b><i>o</i><em>o</em><b>g</b><i>l</i><em>e</em></span>
+            <span class="rp-microsoft"><i><b></b><b></b><b></b><b></b></i>Microsoft</span>
+            <span class="rp-amazon">amazon<small>⌣</small></span>
+            <span class="rp-adobe"><b>◢</b> Adobe</span>
+            <span class="rp-deloitte">Deloitte<span>.</span></span>
+            <span class="rp-tata">◉ TATA</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="rp-tools" id="tools">
@@ -124,20 +139,13 @@
       </div>
     </section>
     <section class="rp-link-sections">
-      <div id="pricing"><span>PRICING</span><h2>Get started for free</h2><p>Explore the resume templates and use the included career tools at no cost.</p><a href="{{ dashboard_signup_url }}">Create your free account →</a></div>
+      <div id="pricing"><span>PRICING</span><h2>Find the right plan</h2><p>Compare the plans and choose the tools that fit your next move.</p><a href="{{ url_for('main.pricing') }}">View pricing plans →</a></div>
       <div id="career-tips"><span>CAREER TOOLKIT</span><h2>Make your next move</h2><p>Build your resume, review your content, and prepare a polished document for your next opportunity.</p><a href="{{ url_for('main.resume_builder') }}">Explore resume templates →</a></div>
     </section>
   </main>
   <footer class="rp-footer"><a class="rp-brand" href="#top"><span class="rp-brand-mark">R</span><span>ResumePro</span></a><span>Build your next opportunity with confidence.</span><a href="#top">Back to top ↑</a></footer>
 
   <script>
-    const themeToggle = document.querySelector(".rp-theme-toggle");
-    themeToggle.addEventListener("click", () => {
-      const isLight = document.body.classList.toggle("rp-light-theme");
-      themeToggle.setAttribute("aria-pressed", String(isLight));
-      themeToggle.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
-    });
-
     const menuToggle = document.querySelector(".rp-menu-toggle");
     const navigation = document.querySelector(".rp-nav");
     menuToggle.addEventListener("click", () => {
